@@ -66,7 +66,7 @@ export async function PUT(
     }
 
     const { id } = await params
-    const { name, description, color, archived } = await request.json()
+    const { name, description, color, archived, budgetHours, hourlyRate } = await request.json()
 
     // Only owner can update project
     const project = await prisma.project.findFirst({
@@ -86,7 +86,9 @@ export async function PUT(
         ...(name && { name }),
         ...(description !== undefined && { description }),
         ...(color && { color }),
-        ...(archived !== undefined && { archived })
+        ...(archived !== undefined && { archived }),
+        ...(budgetHours !== undefined && { budgetHours }),
+        ...(hourlyRate !== undefined && { hourlyRate })
       },
       include: {
         owner: {

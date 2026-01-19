@@ -31,6 +31,8 @@ import {
   CheckSquare,
   Trash2,
   UserPlus,
+  DollarSign,
+  Target,
 } from "lucide-react"
 import { formatDuration } from "@/lib/utils"
 import Link from "next/link"
@@ -58,6 +60,8 @@ interface Project {
   description: string | null
   color: string
   archived: boolean
+  budgetHours: number | null
+  hourlyRate: number | null
   ownerId: string
   owner: {
     id: string
@@ -100,6 +104,8 @@ export default function ProjectDetailPage({
   const [editName, setEditName] = useState("")
   const [editDescription, setEditDescription] = useState("")
   const [editColor, setEditColor] = useState("")
+  const [editBudgetHours, setEditBudgetHours] = useState("")
+  const [editHourlyRate, setEditHourlyRate] = useState("")
   const [inviteEmail, setInviteEmail] = useState("")
   const [newTaskName, setNewTaskName] = useState("")
 
@@ -120,6 +126,8 @@ export default function ProjectDetailPage({
         setEditName(data.name)
         setEditDescription(data.description || "")
         setEditColor(data.color)
+        setEditBudgetHours(data.budgetHours?.toString() || "")
+        setEditHourlyRate(data.hourlyRate?.toString() || "")
       } else {
         router.push("/projects")
       }
@@ -154,7 +162,9 @@ export default function ProjectDetailPage({
       body: JSON.stringify({
         name: editName,
         description: editDescription,
-        color: editColor
+        color: editColor,
+        budgetHours: editBudgetHours ? parseInt(editBudgetHours) : null,
+        hourlyRate: editHourlyRate ? parseFloat(editHourlyRate) : null
       })
     })
 
@@ -319,7 +329,7 @@ export default function ProjectDetailPage({
       )}
 
       {/* Stats */}
-      <div className="grid gap-4 sm:grid-cols-3">
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-sm font-medium">Total Time</CardTitle>
@@ -329,9 +339,52 @@ export default function ProjectDetailPage({
             <div className="text-2xl font-bold">{formatDuration(totalTime)}</div>
           </CardContent>
         </Card>
+        {project.budgetHours && (
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between pb-2">
+              <CardTitle className="text-sm font-medium">Budget</CardTitle>
+              <Target className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">
+                {Math.round(totalTime / 3600)}/{project.budgetHours}h
+              </div>
+              <div className="mt-2 h-2 bg-muted rounded-full overflow-hidden">
+                <div
+                  className={`h-full transition-all ${
+                    (totalTime / 3600 / project.budgetHours) > 0.9
+                      ? "bg-destructive"
+                      : (totalTime / 3600 / project.budgetHours) > 0.7
+                      ? "bg-yellow-500"
+                      : "bg-primary"
+                  }`}
+                  style={{
+                    width: `${Math.min(100, (totalTime / 3600 / project.budgetHours) * 100)}%`
+                  }}
+                />
+              </div>
+            </CardContent>
+          </Card>
+        )}
+        {project.hourlyRate && (
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between pb-2">
+              <CardTitle className="text-sm font-medium">Billable Value</CardTitle>
+              <DollarSign className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">
+                ${((totalTime / 3600) * project.hourlyRate).toFixed(2)}
+              </div>
+              <p className="text-xs text-muted-foreground">
+                @ ${project.hourlyRate}/hr
+              </p>
+            </CardContent>
+          </Card>
+        )}
         <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium">Team Members</CardTitle>
+            <CardTitle className="text-sm font-medium">Team</CardTitle>
             <Users className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
@@ -521,6 +574,31 @@ export default function ProjectDetailPage({
                     />
                   )
                 )}
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="editBudgetHours">Budget (hours)</Label>
+                <Input
+                  id="editBudgetHours"
+                  type="number"
+                  min="0"
+                  value={editBudgetHours}
+                  onChange={(e) => setEditBudgetHours(e.target.value)}
+                  placeholder="e.g., 100"
+                />
+              </div>
+              <div>
+                <Label htmlFor="editHourlyRate">Hourly Rate ($)</Label>
+                <Input
+                  id="editHourlyRate"
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  value={editHourlyRate}
+                  onChange={(e) => setEditHourlyRate(e.target.value)}
+                  placeholder="e.g., 75"
+                />
               </div>
             </div>
           </div>

@@ -20,32 +20,38 @@ model User {
   updatedAt      DateTime  @updatedAt
 
   // Relations
-  ownedProjects    Project[]       @relation("ProjectOwner")
+  ownedProjects    Project[]         @relation("ProjectOwner")
   projectMembers   ProjectMember[]
   timeEntries      TimeEntry[]
-  sentInvitations  Invitation[]    @relation("InvitationSender")
+  sentInvitations  Invitation[]      @relation("InvitationSender")
+  recurringEntries RecurringEntry[]
+  timeTemplates    TimeTemplate[]
 
   @@map("users")
 }
 
 model Project {
-  id          String   @id @default(cuid())
-  name        String
-  description String?
-  color       String   @default("#3B82F6")
-  archived    Boolean  @default(false)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id            String   @id @default(cuid())
+  name          String
+  description   String?
+  color         String   @default("#3B82F6")
+  archived      Boolean  @default(false)
+  budgetHours   Int?     // Budget in hours (for estimates)
+  hourlyRate    Float?   // Hourly rate for billing
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
 
   // Owner relation
   ownerId     String
   owner       User     @relation("ProjectOwner", fields: [ownerId], references: [id], onDelete: Cascade)
 
   // Relations
-  members     ProjectMember[]
-  tasks       Task[]
-  timeEntries TimeEntry[]
-  invitations Invitation[]
+  members          ProjectMember[]
+  tasks            Task[]
+  timeEntries      TimeEntry[]
+  invitations      Invitation[]
+  recurringEntries RecurringEntry[]
+  timeTemplates    TimeTemplate[]
 
   @@map("projects")
 }
@@ -87,6 +93,7 @@ model TimeEntry {
   startTime   DateTime
   endTime     DateTime?
   duration    Int?      // Duration in seconds (calculated or manual)
+  billable    Boolean   @default(true)
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
 
@@ -127,4 +134,55 @@ enum InvitationStatus {
   PENDING
   ACCEPTED
   EXPIRED
+}
+
+// Recurring time entries (auto-create entries on schedule)
+model RecurringEntry {
+  id          String   @id @default(cuid())
+  name        String
+  description String?
+  duration    Int      // Duration in seconds
+  billable    Boolean  @default(true)
+  frequency   RecurringFrequency
+  daysOfWeek  Int[]    // 0=Sunday, 1=Monday, etc. (for WEEKLY)
+  dayOfMonth  Int?     // For MONTHLY
+  startDate   DateTime
+  endDate     DateTime?
+  lastRun     DateTime?
+  active      Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  userId      String
+  user        User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  projectId   String
+  project     Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@map("recurring_entries")
+}
+
+enum RecurringFrequency {
+  DAILY
+  WEEKLY
+  MONTHLY
+}
+
+// Time entry templates for quick reuse
+model TimeTemplate {
+  id          String   @id @default(cuid())
+  name        String
+  description String?
+  duration    Int      // Duration in seconds
+  billable    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  userId      String
+  user        User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  projectId   String
+  project     Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@map("time_templates")
 }

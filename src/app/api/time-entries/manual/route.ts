@@ -10,7 +10,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
 
-    const { projectId, taskId, description, date, startTime, endTime, duration } = await request.json()
+    const { projectId, taskId, description, date, startTime, endTime, duration, billable } = await request.json()
 
     if (!projectId) {
       return NextResponse.json({ error: "Project is required" }, { status: 400 })
@@ -63,7 +63,8 @@ export async function POST(request: Request) {
         description: description || null,
         startTime: calculatedStartTime,
         endTime: calculatedEndTime,
-        duration: calculatedDuration
+        duration: calculatedDuration,
+        billable: billable ?? true
       },
       include: {
         project: {
