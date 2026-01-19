@@ -1,0 +1,19 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npx create-next-app@latest . --typescript --tailwind --eslint --app --src-dir --import-alias \"@/*\" --use-npm --yes)",
+      "Bash(npx create-next-app:*)",
+      "Bash(npm install:*)",
+      "Bash(npx prisma:*)",
+      "Bash(npm uninstall:*)",
+      "Bash(npx tsc --noEmit)",
+      "Bash(npm run lint)",
+      "Bash(node -e:*)",
+      "Bash(timeout 10 npm run dev:*)",
+      "Bash(taskkill //F //PID 5092)",
+      "Bash(git remote add:*)",
+      "Bash(git add:*)",
+      "Bash(git commit -m \"$\\(cat <<''EOF''\nAdd complete time tracking application\n\nFeatures:\n- User authentication \\(register, login, password reset\\)\n- Project management with Owner/Member roles\n- One-click timer with browser tab title updates\n- Manual time entry support\n- Task management within projects\n- Team invitations\n- Reports with pie/bar charts and CSV export\n- Dark/light theme toggle\n- Mobile-responsive design\n\nTech stack:\n- Next.js 16 with App Router\n- PostgreSQL \\(Neon\\) with Prisma ORM\n- NextAuth.js v5 for authentication\n- Tailwind CSS v4\n- Recharts for visualizations\n- Radix UI components\n\nCo-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>\nEOF\n\\)\")"
+    ]
+  }
+}
