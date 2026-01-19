@@ -10,7 +10,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
 
-    const { projectId, taskId, description, date, startTime, endTime, duration, billable } = await request.json()
+    const { projectId, taskId, activity, subtask, notes, tags, description, date, startTime, endTime, duration, billable } = await request.json()
 
     if (!projectId) {
       return NextResponse.json({ error: "Project is required" }, { status: 400 })
@@ -60,6 +60,10 @@ export async function POST(request: Request) {
         userId: session.user.id,
         projectId,
         taskId: taskId || null,
+        activity: activity || null,
+        subtask: subtask || null,
+        notes: notes || null,
+        tags: tags || [],
         description: description || null,
         startTime: calculatedStartTime,
         endTime: calculatedEndTime,

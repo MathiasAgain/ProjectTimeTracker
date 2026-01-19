@@ -77,6 +77,10 @@ interface Project {
 
 interface TimeEntry {
   id: string
+  activity: string | null
+  subtask: string | null
+  notes: string | null
+  tags: string[]
   description: string | null
   startTime: Date
   endTime: Date | null
@@ -111,7 +115,9 @@ export default function ProjectDetailPage({
 
   // Manual time entry state
   const [showManualEntry, setShowManualEntry] = useState(false)
-  const [manualDescription, setManualDescription] = useState("")
+  const [manualActivity, setManualActivity] = useState("")
+  const [manualSubtask, setManualSubtask] = useState("")
+  const [manualNotes, setManualNotes] = useState("")
   const [manualDate, setManualDate] = useState(() => new Date().toISOString().split("T")[0])
   const [manualHours, setManualHours] = useState("")
   const [manualMinutes, setManualMinutes] = useState("")
@@ -240,7 +246,7 @@ export default function ProjectDetailPage({
 
   const handleEditEntry = async (
     entryId: string,
-    data: { description: string; duration: number }
+    data: { activity?: string; subtask?: string; notes?: string; tags?: string[]; description?: string; duration: number }
   ) => {
     const response = await fetch(`/api/time-entries/${entryId}`, {
       method: "PUT",
@@ -276,7 +282,9 @@ export default function ProjectDetailPage({
       body: JSON.stringify({
         projectId: id,
         taskId: manualTaskId || null,
-        description: manualDescription,
+        activity: manualActivity,
+        subtask: manualSubtask,
+        notes: manualNotes,
         date: manualDate,
         duration
       })
@@ -286,7 +294,9 @@ export default function ProjectDetailPage({
       const entry = await response.json()
       setEntries([entry, ...entries])
       setShowManualEntry(false)
-      setManualDescription("")
+      setManualActivity("")
+      setManualSubtask("")
+      setManualNotes("")
       setManualDate(new Date().toISOString().split("T")[0])
       setManualHours("")
       setManualMinutes("")
@@ -668,18 +678,36 @@ export default function ProjectDetailPage({
           </DialogHeader>
           <div className="space-y-4">
             <div>
-              <Label htmlFor="manualDescription">Comment / Notes</Label>
+              <Label htmlFor="manualActivity">Activity</Label>
+              <Input
+                id="manualActivity"
+                value={manualActivity}
+                onChange={(e) => setManualActivity(e.target.value)}
+                placeholder="e.g., Power BI, Development, Design"
+              />
+            </div>
+            <div>
+              <Label htmlFor="manualSubtask">Subtask</Label>
+              <Input
+                id="manualSubtask"
+                value={manualSubtask}
+                onChange={(e) => setManualSubtask(e.target.value)}
+                placeholder="e.g., Modeling of bridge table"
+              />
+            </div>
+            <div>
+              <Label htmlFor="manualNotes">Notes</Label>
               <textarea
-                id="manualDescription"
-                value={manualDescription}
-                onChange={(e) => setManualDescription(e.target.value)}
-                placeholder="Add details about what you worked on..."
+                id="manualNotes"
+                value={manualNotes}
+                onChange={(e) => setManualNotes(e.target.value)}
+                placeholder="e.g., Developed logic for table X to..."
                 className="flex min-h-[80px] w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
               />
             </div>
             {project.tasks.length > 0 && (
               <div>
-                <Label htmlFor="manualTask">Task (optional)</Label>
+                <Label htmlFor="manualTask">Project Task (optional)</Label>
                 <Select value={manualTaskId} onValueChange={setManualTaskId}>
                   <SelectTrigger>
                     <SelectValue placeholder="Select a task" />

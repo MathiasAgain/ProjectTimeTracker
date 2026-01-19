@@ -84,6 +84,57 @@ export async function POST(request: Request) {
       }
     })
 
+    // Create default templates for every new project
+    await prisma.timeTemplate.createMany({
+      data: [
+        {
+          name: "Meeting",
+          activity: "Meeting",
+          description: "Team meeting or client call",
+          tags: ["meeting"],
+          duration: 3600, // 1 hour
+          billable: true,
+          isDefault: true,
+          userId: session.user.id,
+          projectId: project.id
+        },
+        {
+          name: "Quick Sync",
+          activity: "Meeting",
+          subtask: "Quick sync",
+          description: "Short sync-up call",
+          tags: ["meeting", "sync"],
+          duration: 900, // 15 minutes
+          billable: true,
+          isDefault: true,
+          userId: session.user.id,
+          projectId: project.id
+        }
+      ]
+    })
+
+    // Create a daily standup recurring entry for the project
+    const today = new Date()
+    today.setHours(0, 0, 0, 0)
+
+    await prisma.recurringEntry.create({
+      data: {
+        name: "Daily Standup",
+        activity: "Meeting",
+        subtask: "Daily standup",
+        description: "Daily team standup meeting",
+        tags: ["meeting", "standup", "daily"],
+        duration: 900, // 15 minutes
+        billable: false,
+        frequency: "WEEKLY",
+        daysOfWeek: [1, 2, 3, 4, 5], // Monday to Friday
+        startDate: today,
+        active: true,
+        userId: session.user.id,
+        projectId: project.id
+      }
+    })
+
     return NextResponse.json(project)
   } catch (error) {
     console.error("Create project error:", error)

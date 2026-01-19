@@ -62,6 +62,10 @@ export async function POST(
 
     const entry = await prisma.timeEntry.create({
       data: {
+        activity: template.activity || template.name,
+        subtask: template.subtask || null,
+        notes: template.description || null,
+        tags: template.tags || [],
         description: template.description || template.name,
         startTime: baseDate,
         endTime: new Date(baseDate.getTime() + template.duration * 1000),

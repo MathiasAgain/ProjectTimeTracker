@@ -37,7 +37,10 @@ export async function POST(request: Request) {
 
     const {
       name,
+      activity,
+      subtask,
       description,
+      tags,
       duration,
       billable,
       frequency,
@@ -73,7 +76,10 @@ export async function POST(request: Request) {
     const entry = await prisma.recurringEntry.create({
       data: {
         name,
+        activity: activity || null,
+        subtask: subtask || null,
         description: description || null,
+        tags: tags || [],
         duration,
         billable: billable ?? true,
         frequency,

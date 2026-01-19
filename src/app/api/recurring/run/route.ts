@@ -58,6 +58,10 @@ export async function POST() {
 
         const entry = await prisma.timeEntry.create({
           data: {
+            activity: recurring.activity || recurring.name,
+            subtask: recurring.subtask || null,
+            notes: recurring.description || null,
+            tags: recurring.tags || [],
             description: recurring.description || recurring.name,
             startTime,
             endTime: new Date(startTime.getTime() + recurring.duration * 1000),

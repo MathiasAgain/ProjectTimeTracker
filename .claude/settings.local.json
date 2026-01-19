@@ -18,7 +18,11 @@
       "Bash(git push:*)",
       "Bash(npm run build:*)",
       "Bash(git commit -m \"$\\(cat <<''EOF''\nAdd manual time entry feature\n\n- Add /api/time-entries/manual endpoint for creating entries with duration\n- Add \"Add Time Entry\" button to dashboard with dialog\n- Users can specify project, description, date, and duration \\(hours/minutes\\)\n\nCo-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>\nEOF\n\\)\")",
-      "Bash(git checkout:*)"
+      "Bash(git checkout:*)",
+      "Bash(gh pr create:*)",
+      "Bash(git merge:*)",
+      "Bash(git stash:*)",
+      "Bash(taskkill:*)"
     ]
   }
 }

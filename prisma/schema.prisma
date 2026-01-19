@@ -89,7 +89,11 @@ model Task {
 
 model TimeEntry {
   id          String    @id @default(cuid())
-  description String?
+  activity    String?   // Main task/activity (e.g., "Power BI")
+  subtask     String?   // Specific subtask (e.g., "Modeling of bridge table")
+  notes       String?   // Detailed notes/comments
+  tags        String[]  // Tags for categorization (e.g., ["meeting", "client"])
+  description String?   // Legacy field - kept for backwards compatibility
   startTime   DateTime
   endTime     DateTime?
   duration    Int?      // Duration in seconds (calculated or manual)
@@ -140,7 +144,10 @@ enum InvitationStatus {
 model RecurringEntry {
   id          String   @id @default(cuid())
   name        String
+  activity    String?  // Main task/activity
+  subtask     String?  // Specific subtask
   description String?
+  tags        String[] // Tags for categorization
   duration    Int      // Duration in seconds
   billable    Boolean  @default(true)
   frequency   RecurringFrequency
@@ -172,9 +179,13 @@ enum RecurringFrequency {
 model TimeTemplate {
   id          String   @id @default(cuid())
   name        String
+  activity    String?  // Main task/activity
+  subtask     String?  // Specific subtask
   description String?
+  tags        String[] // Tags for categorization
   duration    Int      // Duration in seconds
   billable    Boolean  @default(true)
+  isDefault   Boolean  @default(false) // System default templates
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 

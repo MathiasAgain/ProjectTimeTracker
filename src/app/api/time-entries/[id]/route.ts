@@ -60,7 +60,7 @@ export async function PUT(
     }
 
     const { id } = await params
-    const { description, duration, startTime, endTime } = await request.json()
+    const { activity, subtask, notes, tags, description, duration, startTime, endTime } = await request.json()
 
     // Check if user can edit this entry
     const entry = await prisma.timeEntry.findFirst({
@@ -82,6 +82,22 @@ export async function PUT(
     }
 
     const updateData: Record<string, unknown> = {}
+
+    if (activity !== undefined) {
+      updateData.activity = activity || null
+    }
+
+    if (subtask !== undefined) {
+      updateData.subtask = subtask || null
+    }
+
+    if (notes !== undefined) {
+      updateData.notes = notes || null
+    }
+
+    if (tags !== undefined) {
+      updateData.tags = tags || []
+    }
 
     if (description !== undefined) {
       updateData.description = description

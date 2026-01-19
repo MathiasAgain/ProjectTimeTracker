@@ -11,10 +11,14 @@ import {
   DialogTitle,
   DialogFooter,
 } from "@/components/ui/dialog"
-import { Pencil, Trash2 } from "lucide-react"
+import { Pencil, Trash2, X } from "lucide-react"
 
 interface TimeEntry {
   id: string
+  activity: string | null
+  subtask: string | null
+  notes: string | null
+  tags: string[]
   description: string | null
   startTime: Date
   endTime: Date | null
@@ -28,14 +32,18 @@ interface TimeEntry {
 
 interface TimeEntryListProps {
   entries: TimeEntry[]
-  onEdit: (id: string, data: { description: string; duration: number }) => Promise<void>
+  onEdit: (id: string, data: { activity?: string; subtask?: string; notes?: string; tags?: string[]; description?: string; duration: number }) => Promise<void>
   onDelete: (id: string) => Promise<void>
   canEdit?: boolean
 }
 
 export function TimeEntryList({ entries, onEdit, onDelete, canEdit = true }: TimeEntryListProps) {
   const [editingEntry, setEditingEntry] = useState<TimeEntry | null>(null)
-  const [editDescription, setEditDescription] = useState("")
+  const [editActivity, setEditActivity] = useState("")
+  const [editSubtask, setEditSubtask] = useState("")
+  const [editNotes, setEditNotes] = useState("")
+  const [editTags, setEditTags] = useState<string[]>([])
+  const [newTag, setNewTag] = useState("")
   const [editHours, setEditHours] = useState("0")
   const [editMinutes, setEditMinutes] = useState("0")
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null)
@@ -52,10 +60,26 @@ export function TimeEntryList({ entries, onEdit, onDelete, canEdit = true }: Tim
 
   const handleEditOpen = (entry: TimeEntry) => {
     setEditingEntry(entry)
-    setEditDescription(entry.description || "")
+    setEditActivity(entry.activity || "")
+    setEditSubtask(entry.subtask || "")
+    setEditNotes(entry.notes || "")
+    setEditTags(entry.tags || [])
+    setNewTag("")
     const duration = entry.duration || 0
     setEditHours(Math.floor(duration / 3600).toString())
     setEditMinutes(Math.floor((duration % 3600) / 60).toString())
+  }
+
+  const handleAddTag = () => {
+    const tag = newTag.trim().toLowerCase()
+    if (tag && !editTags.includes(tag)) {
+      setEditTags([...editTags, tag])
+      setNewTag("")
+    }
+  }
+
+  const handleRemoveTag = (tagToRemove: string) => {
+    setEditTags(editTags.filter(t => t !== tagToRemove))
   }
 
   const handleEditSave = async () => {
@@ -63,7 +87,13 @@ export function TimeEntryList({ entries, onEdit, onDelete, canEdit = true }: Tim
     setLoading(true)
     try {
       const duration = parseInt(editHours) * 3600 + parseInt(editMinutes) * 60
-      await onEdit(editingEntry.id, { description: editDescription, duration })
+      await onEdit(editingEntry.id, {
+        activity: editActivity,
+        subtask: editSubtask,
+        notes: editNotes,
+        tags: editTags,
+        duration
+      })
       setEditingEntry(null)
     } finally {
       setLoading(false)
@@ -115,12 +145,38 @@ export function TimeEntryList({ entries, onEdit, onDelete, canEdit = true }: Tim
                       style={{ backgroundColor: entry.project.color }}
                     />
                     <div className="flex-1 min-w-0">
-                      <p className="font-medium truncate">
-                        {entry.description || "No description"}
-                      </p>
-                      <p className="text-sm text-muted-foreground">
-                        {entry.project.name}
-                      </p>
+                      <div className="flex items-center gap-2">
+                        <p className="font-medium truncate">
+                          {entry.activity || entry.description || "No description"}
+                          {entry.subtask && (
+                            <span className="text-muted-foreground font-normal"> → {entry.subtask}</span>
+                          )}
+                        </p>
+                        {entry.tags && entry.tags.length > 0 && (
+                          <div className="flex gap-1 flex-shrink-0">
+                            {entry.tags.slice(0, 3).map((tag) => (
+                              <span
+                                key={tag}
+                                className="px-1.5 py-0.5 text-xs bg-primary/10 text-primary rounded"
+                              >
+                                {tag}
+                              </span>
+                            ))}
+                            {entry.tags.length > 3 && (
+                              <span className="text-xs text-muted-foreground">+{entry.tags.length - 3}</span>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                        <span>{entry.project.name}</span>
+                        {entry.notes && (
+                          <>
+                            <span>•</span>
+                            <span className="truncate">{entry.notes}</span>
+                          </>
+                        )}
+                      </div>
                     </div>
                     <div className="text-sm text-muted-foreground hidden sm:block">
                       {formatTime(new Date(entry.startTime))} -{" "}
@@ -165,12 +221,67 @@ export function TimeEntryList({ entries, onEdit, onDelete, canEdit = true }: Tim
           </DialogHeader>
           <div className="space-y-4">
             <div>
-              <label className="text-sm font-medium">Description</label>
+              <label className="text-sm font-medium">Activity</label>
               <Input
-                value={editDescription}
-                onChange={(e) => setEditDescription(e.target.value)}
-                placeholder="What did you work on?"
+                value={editActivity}
+                onChange={(e) => setEditActivity(e.target.value)}
+                placeholder="e.g., Power BI, Development, Design"
               />
+            </div>
+            <div>
+              <label className="text-sm font-medium">Subtask</label>
+              <Input
+                value={editSubtask}
+                onChange={(e) => setEditSubtask(e.target.value)}
+                placeholder="e.g., Modeling of bridge table"
+              />
+            </div>
+            <div>
+              <label className="text-sm font-medium">Notes</label>
+              <textarea
+                value={editNotes}
+                onChange={(e) => setEditNotes(e.target.value)}
+                placeholder="e.g., Developed logic for table X to..."
+                className="flex min-h-[60px] w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
+              />
+            </div>
+            <div>
+              <label className="text-sm font-medium">Tags</label>
+              <div className="flex gap-2 mb-2">
+                <Input
+                  value={newTag}
+                  onChange={(e) => setNewTag(e.target.value)}
+                  placeholder="Add a tag..."
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      e.preventDefault()
+                      handleAddTag()
+                    }
+                  }}
+                />
+                <Button type="button" variant="outline" onClick={handleAddTag}>
+                  Add
+                </Button>
+              </div>
+              {editTags.length > 0 && (
+                <div className="flex flex-wrap gap-1">
+                  {editTags.map((tag) => (
+                    <span
+                      key={tag}
+                      className="inline-flex items-center gap-1 px-2 py-1 text-xs bg-primary/10 text-primary rounded"
+                    >
+                      {tag}
+                      <button
+                        type="button"
+                        onClick={() => handleRemoveTag(tag)}
+                        className="hover:bg-primary/20 rounded"
+                      >
+                        <X className="h-3 w-3" />
+                      </button>
+                    </span>
+                  ))}
+                </div>
+              )}
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div>

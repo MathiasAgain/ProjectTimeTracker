@@ -35,7 +35,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
 
-    const { name, description, duration, billable, projectId } = await request.json()
+    const { name, activity, subtask, description, tags, duration, billable, projectId } = await request.json()
 
     if (!name || !duration || !projectId) {
       return NextResponse.json(
@@ -62,7 +62,10 @@ export async function POST(request: Request) {
     const template = await prisma.timeTemplate.create({
       data: {
         name,
+        activity: activity || null,
+        subtask: subtask || null,
         description: description || null,
+        tags: tags || [],
         duration,
         billable: billable ?? true,
         userId: session.user.id,
