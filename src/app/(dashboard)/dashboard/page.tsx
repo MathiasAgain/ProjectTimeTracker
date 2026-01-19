@@ -14,7 +14,14 @@ import {
 } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Clock, FolderPlus, TrendingUp } from "lucide-react"
+import { Clock, FolderPlus, TrendingUp, Plus } from "lucide-react"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 import { formatDuration } from "@/lib/utils"
 
 interface Project {
@@ -45,6 +52,14 @@ export default function DashboardPage() {
   const [showNewProject, setShowNewProject] = useState(false)
   const [newProjectName, setNewProjectName] = useState("")
   const [newProjectColor, setNewProjectColor] = useState("#3B82F6")
+
+  // Manual entry state
+  const [showManualEntry, setShowManualEntry] = useState(false)
+  const [manualProjectId, setManualProjectId] = useState("")
+  const [manualDescription, setManualDescription] = useState("")
+  const [manualDate, setManualDate] = useState(() => new Date().toISOString().split("T")[0])
+  const [manualHours, setManualHours] = useState("")
+  const [manualMinutes, setManualMinutes] = useState("")
 
   const fetchData = useCallback(async () => {
     try {
@@ -144,6 +159,38 @@ export default function DashboardPage() {
     }
   }
 
+  const handleCreateManualEntry = async () => {
+    if (!manualProjectId) return
+
+    const hours = parseInt(manualHours) || 0
+    const minutes = parseInt(manualMinutes) || 0
+    const duration = hours * 3600 + minutes * 60
+
+    if (duration <= 0) return
+
+    const response = await fetch("/api/time-entries/manual", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        projectId: manualProjectId,
+        description: manualDescription,
+        date: manualDate,
+        duration
+      })
+    })
+
+    if (response.ok) {
+      const entry = await response.json()
+      setEntries([entry, ...entries])
+      setShowManualEntry(false)
+      setManualProjectId("")
+      setManualDescription("")
+      setManualDate(new Date().toISOString().split("T")[0])
+      setManualHours("")
+      setManualMinutes("")
+    }
+  }
+
   // Calculate stats
   const today = new Date()
   today.setHours(0, 0, 0, 0)
@@ -173,10 +220,16 @@ export default function DashboardPage() {
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <h1 className="text-2xl font-bold">Dashboard</h1>
-        <Button onClick={() => setShowNewProject(true)}>
-          <FolderPlus className="mr-2 h-4 w-4" />
-          New Project
-        </Button>
+        <div className="flex gap-2">
+          <Button variant="outline" onClick={() => setShowManualEntry(true)}>
+            <Plus className="mr-2 h-4 w-4" />
+            Add Time Entry
+          </Button>
+          <Button onClick={() => setShowNewProject(true)}>
+            <FolderPlus className="mr-2 h-4 w-4" />
+            New Project
+          </Button>
+        </div>
       </div>
 
       {/* Timer */}
@@ -298,6 +351,92 @@ export default function DashboardPage() {
               Cancel
             </Button>
             <Button onClick={handleCreateProject}>Create Project</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Manual Time Entry Dialog */}
+      <Dialog open={showManualEntry} onOpenChange={setShowManualEntry}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Add Time Entry</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <Label htmlFor="manualProject">Project</Label>
+              <Select value={manualProjectId} onValueChange={setManualProjectId}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select a project" />
+                </SelectTrigger>
+                <SelectContent>
+                  {projects.map((project) => (
+                    <SelectItem key={project.id} value={project.id}>
+                      <div className="flex items-center gap-2">
+                        <div
+                          className="w-3 h-3 rounded-full"
+                          style={{ backgroundColor: project.color }}
+                        />
+                        <span>{project.name}</span>
+                      </div>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <Label htmlFor="manualDescription">Description (optional)</Label>
+              <Input
+                id="manualDescription"
+                value={manualDescription}
+                onChange={(e) => setManualDescription(e.target.value)}
+                placeholder="What did you work on?"
+              />
+            </div>
+            <div>
+              <Label htmlFor="manualDate">Date</Label>
+              <Input
+                id="manualDate"
+                type="date"
+                value={manualDate}
+                onChange={(e) => setManualDate(e.target.value)}
+              />
+            </div>
+            <div>
+              <Label>Duration</Label>
+              <div className="flex gap-2 items-center">
+                <Input
+                  type="number"
+                  min="0"
+                  max="24"
+                  value={manualHours}
+                  onChange={(e) => setManualHours(e.target.value)}
+                  placeholder="0"
+                  className="w-20"
+                />
+                <span className="text-muted-foreground">hours</span>
+                <Input
+                  type="number"
+                  min="0"
+                  max="59"
+                  value={manualMinutes}
+                  onChange={(e) => setManualMinutes(e.target.value)}
+                  placeholder="0"
+                  className="w-20"
+                />
+                <span className="text-muted-foreground">minutes</span>
+              </div>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowManualEntry(false)}>
+              Cancel
+            </Button>
+            <Button
+              onClick={handleCreateManualEntry}
+              disabled={!manualProjectId || ((!manualHours || manualHours === "0") && (!manualMinutes || manualMinutes === "0"))}
+            >
+              Add Entry
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
