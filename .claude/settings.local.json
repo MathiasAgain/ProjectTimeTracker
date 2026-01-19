@@ -16,7 +16,8 @@
       "Bash(git commit -m \"$\\(cat <<''EOF''\nAdd complete time tracking application\n\nFeatures:\n- User authentication \\(register, login, password reset\\)\n- Project management with Owner/Member roles\n- One-click timer with browser tab title updates\n- Manual time entry support\n- Task management within projects\n- Team invitations\n- Reports with pie/bar charts and CSV export\n- Dark/light theme toggle\n- Mobile-responsive design\n\nTech stack:\n- Next.js 16 with App Router\n- PostgreSQL \\(Neon\\) with Prisma ORM\n- NextAuth.js v5 for authentication\n- Tailwind CSS v4\n- Recharts for visualizations\n- Radix UI components\n\nCo-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>\nEOF\n\\)\")",
       "Bash(git branch:*)",
       "Bash(git push:*)",
-      "Bash(npm run build:*)"
+      "Bash(npm run build:*)",
+      "Bash(git commit -m \"$\\(cat <<''EOF''\nAdd manual time entry feature\n\n- Add /api/time-entries/manual endpoint for creating entries with duration\n- Add \"Add Time Entry\" button to dashboard with dialog\n- Users can specify project, description, date, and duration \\(hours/minutes\\)\n\nCo-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>\nEOF\n\\)\")"
     ]
   }
 }
