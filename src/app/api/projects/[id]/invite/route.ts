@@ -2,6 +2,7 @@ import { NextResponse } from "next/server"
 import { auth } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
 import { v4 as uuidv4 } from "uuid"
+import { sendInvitationEmail } from "@/lib/email"
 
 // Invite member to project
 export async function POST(
@@ -82,13 +83,31 @@ export async function POST(
       }
     })
 
-    // Return the invitation link so the user can share it manually
-    const inviteLink = `/invite/${invitation.token}`
+    // Build the full invite link
+    const baseUrl = process.env.NEXTAUTH_URL || "https://project-time-tracker-blue.vercel.app"
+    const inviteLink = `${baseUrl}/invite/${invitation.token}`
+
+    // Get inviter name for the email
+    const inviter = await prisma.user.findUnique({
+      where: { id: session.user.id },
+      select: { name: true, email: true }
+    })
+
+    // Send invitation email
+    const emailResult = await sendInvitationEmail({
+      to: email,
+      inviterName: inviter?.name || inviter?.email || "Someone",
+      projectName: project.name,
+      inviteLink
+    })
+
     console.log(`Invitation link: ${inviteLink}`)
+    console.log(`Email sent: ${emailResult.success}`)
 
     return NextResponse.json({
-      message: "Invitation created",
-      inviteLink,
+      message: emailResult.success ? "Invitation sent" : "Invitation created (email not sent)",
+      inviteLink: `/invite/${invitation.token}`, // Return relative link for UI
+      emailSent: emailResult.success,
       expiresAt: invitation.expiresAt
     })
   } catch (error) {

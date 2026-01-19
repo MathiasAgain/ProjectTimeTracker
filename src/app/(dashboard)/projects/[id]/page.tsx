@@ -201,7 +201,11 @@ export default function ProjectDetailPage({
         // Non-existing user - show the invite link
         const fullLink = `${window.location.origin}${data.inviteLink}`
         setInviteLink(fullLink)
-        setInviteMessage(`Share this link with ${inviteEmail}. The invitation expires in 7 days.`)
+        if (data.emailSent) {
+          setInviteMessage(`Invitation email sent to ${inviteEmail}! You can also share the link below. Expires in 7 days.`)
+        } else {
+          setInviteMessage(`Share this link with ${inviteEmail}. The invitation expires in 7 days.`)
+        }
       } else {
         // Existing user - already added as member
         setInviteMessage(data.message)

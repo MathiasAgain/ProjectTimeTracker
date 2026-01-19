@@ -2,6 +2,7 @@ import { NextResponse } from "next/server"
 import bcrypt from "bcryptjs"
 import { v4 as uuidv4 } from "uuid"
 import { prisma } from "@/lib/prisma"
+import { sendPasswordResetEmail } from "@/lib/email"
 
 // Request password reset
 export async function POST(request: Request) {
@@ -37,9 +38,17 @@ export async function POST(request: Request) {
       }
     })
 
-    // In production, send email with reset link
-    // For now, log the token (remove in production)
-    console.log(`Reset token for ${email}: ${resetToken}`)
+    // Build reset link and send email
+    const baseUrl = process.env.NEXTAUTH_URL || "https://project-time-tracker-blue.vercel.app"
+    const resetLink = `${baseUrl}/reset-password?token=${resetToken}`
+
+    const emailResult = await sendPasswordResetEmail({
+      to: email,
+      resetLink
+    })
+
+    console.log(`Reset link for ${email}: ${resetLink}`)
+    console.log(`Email sent: ${emailResult.success}`)
 
     return NextResponse.json({
       message: "If an account exists, a reset link has been sent"
