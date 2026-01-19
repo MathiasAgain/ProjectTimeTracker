@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server"
 import { auth } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
+import { filterValidTags } from "@/lib/tag-colors"
 
 // Get single time entry
 export async function GET(
@@ -96,7 +97,8 @@ export async function PUT(
     }
 
     if (tags !== undefined) {
-      updateData.tags = tags || []
+      // Only allow predefined tags
+      updateData.tags = filterValidTags(tags || [])
     }
 
     if (description !== undefined) {

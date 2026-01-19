@@ -2,7 +2,7 @@
 
 import { useState } from "react"
 import { formatDuration, formatTime, formatDate } from "@/lib/utils"
-import { getTagClasses } from "@/lib/tag-colors"
+import { getTagClasses, PREDEFINED_TAGS } from "@/lib/tag-colors"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import {
@@ -12,6 +12,13 @@ import {
   DialogTitle,
   DialogFooter,
 } from "@/components/ui/dialog"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 import { Pencil, Trash2, X, Copy, Star, MessageSquare, Send } from "lucide-react"
 
 interface TimeEntry {
@@ -66,7 +73,6 @@ export function TimeEntryList({
   const [editSubtask, setEditSubtask] = useState("")
   const [editNotes, setEditNotes] = useState("")
   const [editTags, setEditTags] = useState<string[]>([])
-  const [newTag, setNewTag] = useState("")
   const [editHours, setEditHours] = useState("0")
   const [editMinutes, setEditMinutes] = useState("0")
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null)
@@ -93,17 +99,14 @@ export function TimeEntryList({
     setEditSubtask(entry.subtask || "")
     setEditNotes(entry.notes || "")
     setEditTags(entry.tags || [])
-    setNewTag("")
     const duration = entry.duration || 0
     setEditHours(Math.floor(duration / 3600).toString())
     setEditMinutes(Math.floor((duration % 3600) / 60).toString())
   }
 
-  const handleAddTag = () => {
-    const tag = newTag.trim().toLowerCase()
+  const handleAddTag = (tag: string) => {
     if (tag && !editTags.includes(tag)) {
       setEditTags([...editTags, tag])
-      setNewTag("")
     }
   }
 
@@ -346,22 +349,23 @@ export function TimeEntryList({
             </div>
             <div>
               <label className="text-sm font-medium">Tags</label>
-              <div className="flex gap-2 mb-2">
-                <Input
-                  value={newTag}
-                  onChange={(e) => setNewTag(e.target.value)}
-                  placeholder="Add a tag..."
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter") {
-                      e.preventDefault()
-                      handleAddTag()
-                    }
-                  }}
-                />
-                <Button type="button" variant="outline" onClick={handleAddTag}>
-                  Add
-                </Button>
-              </div>
+              <Select
+                value=""
+                onValueChange={(value) => handleAddTag(value)}
+              >
+                <SelectTrigger className="mb-2">
+                  <SelectValue placeholder="Select a tag to add..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {PREDEFINED_TAGS.filter(tag => !editTags.includes(tag.name)).map((tag) => (
+                    <SelectItem key={tag.name} value={tag.name}>
+                      <span className={`px-2 py-0.5 rounded text-xs ${tag.bg} ${tag.text}`}>
+                        {tag.name}
+                      </span>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
               {editTags.length > 0 && (
                 <div className="flex flex-wrap gap-1">
                   {editTags.map((tag) => (

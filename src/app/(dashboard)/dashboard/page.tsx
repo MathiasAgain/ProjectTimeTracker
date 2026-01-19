@@ -23,7 +23,7 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { formatDuration } from "@/lib/utils"
-import { getTagClasses } from "@/lib/tag-colors"
+import { getTagClasses, PREDEFINED_TAGS } from "@/lib/tag-colors"
 import Link from "next/link"
 
 interface TagInfo {
@@ -446,31 +446,34 @@ export default function DashboardPage() {
                 : "Recent Time Entries"}
             </CardTitle>
             <div className="flex gap-2 w-full sm:w-auto">
-              {/* Tag Filter */}
-              {allTags.length > 0 && (
-                <Select
-                  value={selectedTag || "all"}
-                  onValueChange={(value) => setSelectedTag(value === "all" ? "" : value)}
-                >
-                  <SelectTrigger className="w-full sm:w-40">
-                    <Tag className="h-4 w-4 mr-2 text-muted-foreground" />
-                    <SelectValue placeholder="Filter by tag" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">All tags</SelectItem>
-                    {allTags.map((tag) => (
+              {/* Tag Filter - Always show with predefined tags */}
+              <Select
+                value={selectedTag || "all"}
+                onValueChange={(value) => setSelectedTag(value === "all" ? "" : value)}
+              >
+                <SelectTrigger className="w-full sm:w-40">
+                  <Tag className="h-4 w-4 mr-2 text-muted-foreground" />
+                  <SelectValue placeholder="Filter by tag" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All tags</SelectItem>
+                  {PREDEFINED_TAGS.map((tag) => {
+                    const tagInfo = allTags.find(t => t.name === tag.name)
+                    return (
                       <SelectItem key={tag.name} value={tag.name}>
                         <div className="flex items-center gap-2">
-                          <span className={`px-1.5 py-0.5 text-xs rounded ${getTagClasses(tag.name)}`}>
+                          <span className={`px-1.5 py-0.5 text-xs rounded ${tag.bg} ${tag.text}`}>
                             {tag.name}
                           </span>
-                          <span className="text-muted-foreground text-xs">({tag.count})</span>
+                          {tagInfo && tagInfo.count > 0 && (
+                            <span className="text-muted-foreground text-xs">({tagInfo.count})</span>
+                          )}
                         </div>
                       </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              )}
+                    )
+                  })}
+                </SelectContent>
+              </Select>
               {/* Search Input */}
               <div className="relative flex-1 sm:w-64">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
