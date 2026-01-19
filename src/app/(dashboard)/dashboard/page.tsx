@@ -14,7 +14,7 @@ import {
 } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Clock, FolderPlus, TrendingUp, Plus, Star, Search, X } from "lucide-react"
+import { Clock, FolderPlus, TrendingUp, Plus, Star, Search, X, Tag } from "lucide-react"
 import {
   Select,
   SelectContent,
@@ -23,7 +23,13 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { formatDuration } from "@/lib/utils"
+import { getTagClasses } from "@/lib/tag-colors"
 import Link from "next/link"
+
+interface TagInfo {
+  name: string
+  count: number
+}
 
 interface Project {
   id: string
@@ -65,6 +71,10 @@ export default function DashboardPage() {
   const [searchResults, setSearchResults] = useState<TimeEntry[] | null>(null)
   const [isSearching, setIsSearching] = useState(false)
 
+  // Tag filter state
+  const [allTags, setAllTags] = useState<TagInfo[]>([])
+  const [selectedTag, setSelectedTag] = useState<string>("")
+
   // Manual entry state
   const [showManualEntry, setShowManualEntry] = useState(false)
   const [manualProjectId, setManualProjectId] = useState("")
@@ -75,11 +85,12 @@ export default function DashboardPage() {
 
   const fetchData = useCallback(async () => {
     try {
-      const [projectsRes, entriesRes, activeRes, favoritesRes] = await Promise.all([
+      const [projectsRes, entriesRes, activeRes, favoritesRes, tagsRes] = await Promise.all([
         fetch("/api/projects"),
         fetch("/api/time-entries"),
         fetch("/api/time-entries/active"),
-        fetch("/api/favorites")
+        fetch("/api/favorites"),
+        fetch("/api/tags")
       ])
 
       if (projectsRes.ok) {
@@ -102,6 +113,11 @@ export default function DashboardPage() {
         setFavorites(data)
         setFavoriteIds(new Set(data.map((p: Project) => p.id)))
       }
+
+      if (tagsRes.ok) {
+        const data = await tagsRes.json()
+        setAllTags(data)
+      }
     } catch (error) {
       console.error("Error fetching data:", error)
     } finally {
@@ -113,9 +129,9 @@ export default function DashboardPage() {
     fetchData()
   }, [fetchData])
 
-  // Search with debounce
+  // Search with debounce (includes tag filtering)
   useEffect(() => {
-    if (!searchQuery.trim()) {
+    if (!searchQuery.trim() && !selectedTag) {
       setSearchResults(null)
       return
     }
@@ -123,7 +139,14 @@ export default function DashboardPage() {
     const timer = setTimeout(async () => {
       setIsSearching(true)
       try {
-        const res = await fetch(`/api/time-entries/search?q=${encodeURIComponent(searchQuery)}`)
+        const params = new URLSearchParams()
+        if (searchQuery.trim()) {
+          params.set("q", searchQuery)
+        }
+        if (selectedTag) {
+          params.set("tags", selectedTag)
+        }
+        const res = await fetch(`/api/time-entries/search?${params.toString()}`)
         if (res.ok) {
           const data = await res.json()
           setSearchResults(data)
@@ -136,7 +159,7 @@ export default function DashboardPage() {
     }, 300)
 
     return () => clearTimeout(timer)
-  }, [searchQuery])
+  }, [searchQuery, selectedTag])
 
   const handleToggleFavorite = async (projectId: string) => {
     const res = await fetch("/api/favorites", {
@@ -411,29 +434,95 @@ export default function DashboardPage() {
         </Card>
       </div>
 
-      {/* Recent Entries with Search */}
+      {/* Recent Entries with Search and Tag Filter */}
       <Card>
         <CardHeader>
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-            <CardTitle>{searchResults ? "Search Results" : "Recent Time Entries"}</CardTitle>
-            <div className="relative w-full sm:w-64">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input
-                placeholder="Search entries..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-9 pr-9"
-              />
-              {searchQuery && (
-                <button
-                  onClick={() => setSearchQuery("")}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+            <CardTitle>
+              {searchResults
+                ? selectedTag && !searchQuery
+                  ? `Entries tagged "${selectedTag}"`
+                  : "Search Results"
+                : "Recent Time Entries"}
+            </CardTitle>
+            <div className="flex gap-2 w-full sm:w-auto">
+              {/* Tag Filter */}
+              {allTags.length > 0 && (
+                <Select
+                  value={selectedTag || "all"}
+                  onValueChange={(value) => setSelectedTag(value === "all" ? "" : value)}
                 >
-                  <X className="h-4 w-4" />
-                </button>
+                  <SelectTrigger className="w-full sm:w-40">
+                    <Tag className="h-4 w-4 mr-2 text-muted-foreground" />
+                    <SelectValue placeholder="Filter by tag" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All tags</SelectItem>
+                    {allTags.map((tag) => (
+                      <SelectItem key={tag.name} value={tag.name}>
+                        <div className="flex items-center gap-2">
+                          <span className={`px-1.5 py-0.5 text-xs rounded ${getTagClasses(tag.name)}`}>
+                            {tag.name}
+                          </span>
+                          <span className="text-muted-foreground text-xs">({tag.count})</span>
+                        </div>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               )}
+              {/* Search Input */}
+              <div className="relative flex-1 sm:w-64">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                  placeholder="Search entries..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="pl-9 pr-9"
+                />
+                {(searchQuery || selectedTag) && (
+                  <button
+                    onClick={() => {
+                      setSearchQuery("")
+                      setSelectedTag("")
+                    }}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                    title="Clear filters"
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
+                )}
+              </div>
             </div>
           </div>
+          {/* Active filters display */}
+          {(searchQuery || selectedTag) && (
+            <div className="flex items-center gap-2 mt-3 flex-wrap">
+              <span className="text-sm text-muted-foreground">Active filters:</span>
+              {selectedTag && (
+                <span className={`inline-flex items-center gap-1 px-2 py-1 text-xs rounded ${getTagClasses(selectedTag)}`}>
+                  {selectedTag}
+                  <button
+                    onClick={() => setSelectedTag("")}
+                    className="hover:opacity-70"
+                  >
+                    <X className="h-3 w-3" />
+                  </button>
+                </span>
+              )}
+              {searchQuery && (
+                <span className="inline-flex items-center gap-1 px-2 py-1 text-xs rounded bg-muted">
+                  &quot;{searchQuery}&quot;
+                  <button
+                    onClick={() => setSearchQuery("")}
+                    className="hover:opacity-70"
+                  >
+                    <X className="h-3 w-3" />
+                  </button>
+                </span>
+              )}
+            </div>
+          )}
         </CardHeader>
         <CardContent>
           {isSearching ? (

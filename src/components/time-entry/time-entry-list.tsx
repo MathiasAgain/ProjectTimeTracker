@@ -2,6 +2,7 @@
 
 import { useState } from "react"
 import { formatDuration, formatTime, formatDate } from "@/lib/utils"
+import { getTagClasses } from "@/lib/tag-colors"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import {
@@ -235,7 +236,7 @@ export function TimeEntryList({
                             {entry.tags.slice(0, 3).map((tag) => (
                               <span
                                 key={tag}
-                                className="px-1.5 py-0.5 text-xs bg-primary/10 text-primary rounded"
+                                className={`px-1.5 py-0.5 text-xs rounded ${getTagClasses(tag)}`}
                               >
                                 {tag}
                               </span>
@@ -366,13 +367,13 @@ export function TimeEntryList({
                   {editTags.map((tag) => (
                     <span
                       key={tag}
-                      className="inline-flex items-center gap-1 px-2 py-1 text-xs bg-primary/10 text-primary rounded"
+                      className={`inline-flex items-center gap-1 px-2 py-1 text-xs rounded ${getTagClasses(tag)}`}
                     >
                       {tag}
                       <button
                         type="button"
                         onClick={() => handleRemoveTag(tag)}
-                        className="hover:bg-primary/20 rounded"
+                        className="hover:opacity-70 rounded"
                       >
                         <X className="h-3 w-3" />
                       </button>
