@@ -19,7 +19,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { Plus, Trash2, Play } from "lucide-react"
+import { Plus, Trash2, Play, Sparkles } from "lucide-react"
 import { formatDuration } from "@/lib/utils"
 
 interface Project {
@@ -132,6 +132,18 @@ export default function TemplatesPage() {
     setBillable(true)
   }
 
+  const handleAddDefaults = async () => {
+    const response = await fetch("/api/templates/defaults", {
+      method: "POST"
+    })
+
+    if (response.ok) {
+      const result = await response.json()
+      alert(result.message)
+      fetchData()
+    }
+  }
+
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
@@ -149,22 +161,34 @@ export default function TemplatesPage() {
             Save common time entries for quick reuse
           </p>
         </div>
-        <Button onClick={() => setShowNew(true)}>
-          <Plus className="mr-2 h-4 w-4" />
-          New Template
-        </Button>
+        <div className="flex gap-2">
+          <Button variant="outline" onClick={handleAddDefaults}>
+            <Sparkles className="mr-2 h-4 w-4" />
+            Add Defaults
+          </Button>
+          <Button onClick={() => setShowNew(true)}>
+            <Plus className="mr-2 h-4 w-4" />
+            New Template
+          </Button>
+        </div>
       </div>
 
       {templates.length === 0 ? (
         <Card>
           <CardContent className="py-12 text-center">
             <p className="text-muted-foreground mb-4">
-              No templates yet. Create one to quickly log common tasks.
+              No templates yet. Create one or add default templates.
             </p>
-            <Button onClick={() => setShowNew(true)}>
-              <Plus className="mr-2 h-4 w-4" />
-              Create Template
-            </Button>
+            <div className="flex gap-2 justify-center">
+              <Button variant="outline" onClick={handleAddDefaults}>
+                <Sparkles className="mr-2 h-4 w-4" />
+                Add Defaults
+              </Button>
+              <Button onClick={() => setShowNew(true)}>
+                <Plus className="mr-2 h-4 w-4" />
+                Create Template
+              </Button>
+            </div>
           </CardContent>
         </Card>
       ) : (
