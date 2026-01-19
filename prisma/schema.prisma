@@ -26,6 +26,8 @@ model User {
   sentInvitations  Invitation[]      @relation("InvitationSender")
   recurringEntries RecurringEntry[]
   timeTemplates    TimeTemplate[]
+  favoriteProjects FavoriteProject[]
+  entryComments    EntryComment[]
 
   @@map("users")
 }
@@ -52,6 +54,7 @@ model Project {
   invitations      Invitation[]
   recurringEntries RecurringEntry[]
   timeTemplates    TimeTemplate[]
+  favoritedBy      FavoriteProject[]
 
   @@map("projects")
 }
@@ -69,6 +72,21 @@ model ProjectMember {
 
   @@unique([userId, projectId])
   @@map("project_members")
+}
+
+// User's favorite/pinned projects
+model FavoriteProject {
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
+
+  // Relations
+  userId    String
+  user      User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  projectId String
+  project   Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, projectId])
+  @@map("favorite_projects")
 }
 
 model Task {
@@ -108,8 +126,25 @@ model TimeEntry {
   project     Project   @relation(fields: [projectId], references: [id], onDelete: Cascade)
   taskId      String?
   task        Task?     @relation(fields: [taskId], references: [id], onDelete: SetNull)
+  comments    EntryComment[]
 
   @@map("time_entries")
+}
+
+// Comments on time entries (for team collaboration)
+model EntryComment {
+  id        String   @id @default(cuid())
+  content   String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  entryId   String
+  entry     TimeEntry @relation(fields: [entryId], references: [id], onDelete: Cascade)
+
+  @@map("entry_comments")
 }
 
 model Invitation {

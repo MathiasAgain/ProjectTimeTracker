@@ -11,7 +11,7 @@ import {
   DialogTitle,
   DialogFooter,
 } from "@/components/ui/dialog"
-import { Pencil, Trash2, X } from "lucide-react"
+import { Pencil, Trash2, X, Copy, Star, MessageSquare, Send } from "lucide-react"
 
 interface TimeEntry {
   id: string
@@ -30,14 +30,36 @@ interface TimeEntry {
   }
 }
 
+interface Comment {
+  id: string
+  content: string
+  createdAt: string
+  user: {
+    id: string
+    name: string | null
+    email: string
+  }
+}
+
 interface TimeEntryListProps {
   entries: TimeEntry[]
   onEdit: (id: string, data: { activity?: string; subtask?: string; notes?: string; tags?: string[]; description?: string; duration: number }) => Promise<void>
   onDelete: (id: string) => Promise<void>
+  onDuplicate?: (id: string) => Promise<void>
+  onToggleFavorite?: (projectId: string) => Promise<void>
+  favoriteProjectIds?: Set<string>
   canEdit?: boolean
 }
 
-export function TimeEntryList({ entries, onEdit, onDelete, canEdit = true }: TimeEntryListProps) {
+export function TimeEntryList({
+  entries,
+  onEdit,
+  onDelete,
+  onDuplicate,
+  onToggleFavorite,
+  favoriteProjectIds = new Set(),
+  canEdit = true
+}: TimeEntryListProps) {
   const [editingEntry, setEditingEntry] = useState<TimeEntry | null>(null)
   const [editActivity, setEditActivity] = useState("")
   const [editSubtask, setEditSubtask] = useState("")
@@ -48,6 +70,12 @@ export function TimeEntryList({ entries, onEdit, onDelete, canEdit = true }: Tim
   const [editMinutes, setEditMinutes] = useState("0")
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
+
+  // Comments state
+  const [commentsEntry, setCommentsEntry] = useState<TimeEntry | null>(null)
+  const [comments, setComments] = useState<Comment[]>([])
+  const [newComment, setNewComment] = useState("")
+  const [loadingComments, setLoadingComments] = useState(false)
 
   const groupedEntries = entries.reduce((groups, entry) => {
     const date = formatDate(new Date(entry.startTime))
@@ -110,6 +138,43 @@ export function TimeEntryList({ entries, onEdit, onDelete, canEdit = true }: Tim
     }
   }
 
+  const handleOpenComments = async (entry: TimeEntry) => {
+    setCommentsEntry(entry)
+    setLoadingComments(true)
+    try {
+      const res = await fetch(`/api/time-entries/${entry.id}/comments`)
+      if (res.ok) {
+        const data = await res.json()
+        setComments(data)
+      }
+    } catch (error) {
+      console.error("Error loading comments:", error)
+    } finally {
+      setLoadingComments(false)
+    }
+  }
+
+  const handleAddComment = async () => {
+    if (!commentsEntry || !newComment.trim()) return
+    setLoadingComments(true)
+    try {
+      const res = await fetch(`/api/time-entries/${commentsEntry.id}/comments`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ content: newComment })
+      })
+      if (res.ok) {
+        const comment = await res.json()
+        setComments([...comments, comment])
+        setNewComment("")
+      }
+    } catch (error) {
+      console.error("Error adding comment:", error)
+    } finally {
+      setLoadingComments(false)
+    }
+  }
+
   if (entries.length === 0) {
     return (
       <div className="text-center py-12 text-muted-foreground">
@@ -140,10 +205,23 @@ export function TimeEntryList({ entries, onEdit, onDelete, canEdit = true }: Tim
                     key={entry.id}
                     className="flex items-center gap-4 p-4 bg-card rounded-lg border"
                   >
-                    <div
-                      className="w-3 h-3 rounded-full flex-shrink-0"
-                      style={{ backgroundColor: entry.project.color }}
-                    />
+                    <div className="flex items-center gap-2">
+                      {onToggleFavorite && (
+                        <button
+                          onClick={() => onToggleFavorite(entry.project.id)}
+                          className="text-muted-foreground hover:text-yellow-500 transition-colors"
+                          title={favoriteProjectIds.has(entry.project.id) ? "Remove from favorites" : "Add to favorites"}
+                        >
+                          <Star
+                            className={`h-4 w-4 ${favoriteProjectIds.has(entry.project.id) ? "text-yellow-500 fill-yellow-500" : ""}`}
+                          />
+                        </button>
+                      )}
+                      <div
+                        className="w-3 h-3 rounded-full flex-shrink-0"
+                        style={{ backgroundColor: entry.project.color }}
+                      />
+                    </div>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2">
                         <p className="font-medium truncate">
@@ -189,10 +267,29 @@ export function TimeEntryList({ entries, onEdit, onDelete, canEdit = true }: Tim
                     </div>
                     {canEdit && (
                       <div className="flex gap-1">
+                        {onDuplicate && (
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => onDuplicate(entry.id)}
+                            title="Duplicate entry"
+                          >
+                            <Copy className="h-4 w-4" />
+                          </Button>
+                        )}
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => handleOpenComments(entry)}
+                          title="Comments"
+                        >
+                          <MessageSquare className="h-4 w-4" />
+                        </Button>
                         <Button
                           variant="ghost"
                           size="icon"
                           onClick={() => handleEditOpen(entry)}
+                          title="Edit"
                         >
                           <Pencil className="h-4 w-4" />
                         </Button>
@@ -200,6 +297,7 @@ export function TimeEntryList({ entries, onEdit, onDelete, canEdit = true }: Tim
                           variant="ghost"
                           size="icon"
                           onClick={() => setDeleteConfirm(entry.id)}
+                          title="Delete"
                         >
                           <Trash2 className="h-4 w-4 text-destructive" />
                         </Button>
@@ -313,6 +411,62 @@ export function TimeEntryList({ entries, onEdit, onDelete, canEdit = true }: Tim
               {loading ? "Saving..." : "Save"}
             </Button>
           </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Comments Dialog */}
+      <Dialog open={!!commentsEntry} onOpenChange={() => setCommentsEntry(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Comments</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            {commentsEntry && (
+              <div className="p-3 bg-muted rounded-lg text-sm">
+                <p className="font-medium">{commentsEntry.activity || commentsEntry.description || "Time entry"}</p>
+                <p className="text-muted-foreground">{commentsEntry.project.name}</p>
+              </div>
+            )}
+
+            <div className="max-h-64 overflow-y-auto space-y-3">
+              {loadingComments ? (
+                <div className="flex items-center justify-center py-4">
+                  <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary"></div>
+                </div>
+              ) : comments.length === 0 ? (
+                <p className="text-center text-muted-foreground py-4">No comments yet</p>
+              ) : (
+                comments.map((comment) => (
+                  <div key={comment.id} className="p-3 bg-card border rounded-lg">
+                    <div className="flex justify-between items-start mb-1">
+                      <span className="font-medium text-sm">{comment.user.name || comment.user.email}</span>
+                      <span className="text-xs text-muted-foreground">
+                        {new Date(comment.createdAt).toLocaleDateString()}
+                      </span>
+                    </div>
+                    <p className="text-sm">{comment.content}</p>
+                  </div>
+                ))
+              )}
+            </div>
+
+            <div className="flex gap-2">
+              <Input
+                value={newComment}
+                onChange={(e) => setNewComment(e.target.value)}
+                placeholder="Add a comment..."
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && !e.shiftKey) {
+                    e.preventDefault()
+                    handleAddComment()
+                  }
+                }}
+              />
+              <Button onClick={handleAddComment} disabled={loadingComments || !newComment.trim()}>
+                <Send className="h-4 w-4" />
+              </Button>
+            </div>
+          </div>
         </DialogContent>
       </Dialog>
 

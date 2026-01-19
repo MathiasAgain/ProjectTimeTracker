@@ -14,7 +14,9 @@ import {
   CalendarDays,
   Users,
   Repeat,
-  FileText
+  FileText,
+  Calendar,
+  UsersRound
 } from "lucide-react"
 import { useState } from "react"
 import { Button } from "@/components/ui/button"
@@ -22,10 +24,12 @@ import { Button } from "@/components/ui/button"
 const navigation = [
   { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
   { name: "Timesheet", href: "/timesheet", icon: CalendarDays },
+  { name: "Calendar", href: "/calendar", icon: Calendar },
   { name: "Projects", href: "/projects", icon: FolderKanban },
   { name: "Templates", href: "/templates", icon: FileText },
   { name: "Recurring", href: "/recurring", icon: Repeat },
   { name: "Team", href: "/team", icon: Users },
+  { name: "Team Dashboard", href: "/team-dashboard", icon: UsersRound },
   { name: "Reports", href: "/reports", icon: BarChart3 },
   { name: "Settings", href: "/settings", icon: Settings },
 ]

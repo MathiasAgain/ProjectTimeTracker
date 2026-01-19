@@ -14,7 +14,7 @@ import {
 } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Clock, FolderPlus, TrendingUp, Plus } from "lucide-react"
+import { Clock, FolderPlus, TrendingUp, Plus, Star, Search, X } from "lucide-react"
 import {
   Select,
   SelectContent,
@@ -23,6 +23,7 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { formatDuration } from "@/lib/utils"
+import Link from "next/link"
 
 interface Project {
   id: string
@@ -50,12 +51,19 @@ interface TimeEntry {
 
 export default function DashboardPage() {
   const [projects, setProjects] = useState<Project[]>([])
+  const [favorites, setFavorites] = useState<Project[]>([])
+  const [favoriteIds, setFavoriteIds] = useState<Set<string>>(new Set())
   const [entries, setEntries] = useState<TimeEntry[]>([])
   const [activeEntry, setActiveEntry] = useState<TimeEntry | null>(null)
   const [loading, setLoading] = useState(true)
   const [showNewProject, setShowNewProject] = useState(false)
   const [newProjectName, setNewProjectName] = useState("")
   const [newProjectColor, setNewProjectColor] = useState("#3B82F6")
+
+  // Search state
+  const [searchQuery, setSearchQuery] = useState("")
+  const [searchResults, setSearchResults] = useState<TimeEntry[] | null>(null)
+  const [isSearching, setIsSearching] = useState(false)
 
   // Manual entry state
   const [showManualEntry, setShowManualEntry] = useState(false)
@@ -67,10 +75,11 @@ export default function DashboardPage() {
 
   const fetchData = useCallback(async () => {
     try {
-      const [projectsRes, entriesRes, activeRes] = await Promise.all([
+      const [projectsRes, entriesRes, activeRes, favoritesRes] = await Promise.all([
         fetch("/api/projects"),
         fetch("/api/time-entries"),
-        fetch("/api/time-entries/active")
+        fetch("/api/time-entries/active"),
+        fetch("/api/favorites")
       ])
 
       if (projectsRes.ok) {
@@ -87,6 +96,12 @@ export default function DashboardPage() {
         const data = await activeRes.json()
         setActiveEntry(data)
       }
+
+      if (favoritesRes.ok) {
+        const data = await favoritesRes.json()
+        setFavorites(data)
+        setFavoriteIds(new Set(data.map((p: Project) => p.id)))
+      }
     } catch (error) {
       console.error("Error fetching data:", error)
     } finally {
@@ -97,6 +112,55 @@ export default function DashboardPage() {
   useEffect(() => {
     fetchData()
   }, [fetchData])
+
+  // Search with debounce
+  useEffect(() => {
+    if (!searchQuery.trim()) {
+      setSearchResults(null)
+      return
+    }
+
+    const timer = setTimeout(async () => {
+      setIsSearching(true)
+      try {
+        const res = await fetch(`/api/time-entries/search?q=${encodeURIComponent(searchQuery)}`)
+        if (res.ok) {
+          const data = await res.json()
+          setSearchResults(data)
+        }
+      } catch (error) {
+        console.error("Search error:", error)
+      } finally {
+        setIsSearching(false)
+      }
+    }, 300)
+
+    return () => clearTimeout(timer)
+  }, [searchQuery])
+
+  const handleToggleFavorite = async (projectId: string) => {
+    const res = await fetch("/api/favorites", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ projectId })
+    })
+
+    if (res.ok) {
+      const { favorited } = await res.json()
+      if (favorited) {
+        const project = projects.find(p => p.id === projectId)
+        if (project) {
+          setFavorites([project, ...favorites])
+          setFavoriteIds(new Set([...favoriteIds, projectId]))
+        }
+      } else {
+        setFavorites(favorites.filter(p => p.id !== projectId))
+        const newIds = new Set(favoriteIds)
+        newIds.delete(projectId)
+        setFavoriteIds(newIds)
+      }
+    }
+  }
 
   const handleStartTimer = async (projectId: string, description: string) => {
     const response = await fetch("/api/time-entries", {
@@ -142,6 +206,22 @@ export default function DashboardPage() {
 
     if (response.ok) {
       setEntries(entries.filter((e) => e.id !== id))
+      if (searchResults) {
+        setSearchResults(searchResults.filter((e) => e.id !== id))
+      }
+    }
+  }
+
+  const handleDuplicateEntry = async (id: string) => {
+    const res = await fetch(`/api/time-entries/${id}/duplicate`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ date: new Date().toISOString() })
+    })
+
+    if (res.ok) {
+      const newEntry = await res.json()
+      setEntries([newEntry, ...entries])
     }
   }
 
@@ -220,6 +300,8 @@ export default function DashboardPage() {
     )
   }
 
+  const displayedEntries = searchResults ?? entries.slice(0, 10)
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
@@ -235,6 +317,35 @@ export default function DashboardPage() {
           </Button>
         </div>
       </div>
+
+      {/* Favorite Projects */}
+      {favorites.length > 0 && (
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-sm font-medium flex items-center gap-2">
+              <Star className="h-4 w-4 text-yellow-500 fill-yellow-500" />
+              Favorite Projects
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="flex flex-wrap gap-2">
+              {favorites.map((project) => (
+                <Link
+                  key={project.id}
+                  href={`/projects/${project.id}`}
+                  className="flex items-center gap-2 px-3 py-2 bg-muted rounded-lg hover:bg-muted/80 transition-colors"
+                >
+                  <div
+                    className="w-3 h-3 rounded-full"
+                    style={{ backgroundColor: project.color }}
+                  />
+                  <span className="text-sm font-medium">{project.name}</span>
+                </Link>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Timer */}
       {projects.length > 0 ? (
@@ -300,17 +411,45 @@ export default function DashboardPage() {
         </Card>
       </div>
 
-      {/* Recent Entries */}
+      {/* Recent Entries with Search */}
       <Card>
         <CardHeader>
-          <CardTitle>Recent Time Entries</CardTitle>
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+            <CardTitle>{searchResults ? "Search Results" : "Recent Time Entries"}</CardTitle>
+            <div className="relative w-full sm:w-64">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Search entries..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="pl-9 pr-9"
+              />
+              {searchQuery && (
+                <button
+                  onClick={() => setSearchQuery("")}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              )}
+            </div>
+          </div>
         </CardHeader>
         <CardContent>
-          <TimeEntryList
-            entries={entries.slice(0, 10)}
-            onEdit={handleEditEntry}
-            onDelete={handleDeleteEntry}
-          />
+          {isSearching ? (
+            <div className="flex items-center justify-center py-8">
+              <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary"></div>
+            </div>
+          ) : (
+            <TimeEntryList
+              entries={displayedEntries}
+              onEdit={handleEditEntry}
+              onDelete={handleDeleteEntry}
+              onDuplicate={handleDuplicateEntry}
+              onToggleFavorite={handleToggleFavorite}
+              favoriteProjectIds={favoriteIds}
+            />
+          )}
         </CardContent>
       </Card>
 
