@@ -82,10 +82,15 @@ export async function POST(
       }
     })
 
-    // In production, send email with invitation link
-    console.log(`Invitation link: /invite/${invitation.token}`)
+    // Return the invitation link so the user can share it manually
+    const inviteLink = `/invite/${invitation.token}`
+    console.log(`Invitation link: ${inviteLink}`)
 
-    return NextResponse.json({ message: "Invitation sent" })
+    return NextResponse.json({
+      message: "Invitation created",
+      inviteLink,
+      expiresAt: invitation.expiresAt
+    })
   } catch (error) {
     console.error("Invite member error:", error)
     return NextResponse.json({ error: "Something went wrong" }, { status: 500 })

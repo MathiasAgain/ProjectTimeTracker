@@ -33,6 +33,8 @@ import {
   UserPlus,
   DollarSign,
   Target,
+  Copy,
+  Check,
 } from "lucide-react"
 import { formatDuration } from "@/lib/utils"
 import Link from "next/link"
@@ -111,6 +113,9 @@ export default function ProjectDetailPage({
   const [editBudgetHours, setEditBudgetHours] = useState("")
   const [editHourlyRate, setEditHourlyRate] = useState("")
   const [inviteEmail, setInviteEmail] = useState("")
+  const [inviteLink, setInviteLink] = useState("")
+  const [inviteCopied, setInviteCopied] = useState(false)
+  const [inviteMessage, setInviteMessage] = useState("")
   const [newTaskName, setNewTaskName] = useState("")
 
   // Manual time entry state
@@ -190,10 +195,41 @@ export default function ProjectDetailPage({
     })
 
     if (response.ok) {
-      setShowInvite(false)
+      const data = await response.json()
+
+      if (data.inviteLink) {
+        // Non-existing user - show the invite link
+        const fullLink = `${window.location.origin}${data.inviteLink}`
+        setInviteLink(fullLink)
+        setInviteMessage(`Share this link with ${inviteEmail}. The invitation expires in 7 days.`)
+      } else {
+        // Existing user - already added as member
+        setInviteMessage(data.message)
+        setInviteLink("")
+      }
+
       setInviteEmail("")
+      setInviteCopied(false)
       fetchProject()
     }
+  }
+
+  const handleCopyInviteLink = async () => {
+    try {
+      await navigator.clipboard.writeText(inviteLink)
+      setInviteCopied(true)
+      setTimeout(() => setInviteCopied(false), 2000)
+    } catch (err) {
+      console.error("Failed to copy:", err)
+    }
+  }
+
+  const handleCloseInvite = () => {
+    setShowInvite(false)
+    setInviteEmail("")
+    setInviteLink("")
+    setInviteMessage("")
+    setInviteCopied(false)
   }
 
   const handleRemoveMember = async (memberId: string) => {
@@ -622,27 +658,82 @@ export default function ProjectDetailPage({
       </Dialog>
 
       {/* Invite Dialog */}
-      <Dialog open={showInvite} onOpenChange={setShowInvite}>
+      <Dialog open={showInvite} onOpenChange={handleCloseInvite}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Invite Team Member</DialogTitle>
           </DialogHeader>
-          <div>
-            <Label htmlFor="inviteEmail">Email Address</Label>
-            <Input
-              id="inviteEmail"
-              type="email"
-              value={inviteEmail}
-              onChange={(e) => setInviteEmail(e.target.value)}
-              placeholder="colleague@example.com"
-            />
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setShowInvite(false)}>
-              Cancel
-            </Button>
-            <Button onClick={handleInviteMember}>Send Invitation</Button>
-          </DialogFooter>
+
+          {inviteMessage ? (
+            <div className="space-y-4">
+              <div className="p-4 bg-muted rounded-lg">
+                <p className="text-sm text-muted-foreground mb-2">{inviteMessage}</p>
+                {inviteLink && (
+                  <div className="flex gap-2 mt-3">
+                    <Input
+                      value={inviteLink}
+                      readOnly
+                      className="flex-1 font-mono text-xs"
+                    />
+                    <Button
+                      variant="outline"
+                      size="icon"
+                      onClick={handleCopyInviteLink}
+                      title="Copy link"
+                    >
+                      {inviteCopied ? (
+                        <Check className="h-4 w-4 text-green-500" />
+                      ) : (
+                        <Copy className="h-4 w-4" />
+                      )}
+                    </Button>
+                  </div>
+                )}
+              </div>
+              <DialogFooter>
+                <Button variant="outline" onClick={handleCloseInvite}>
+                  Done
+                </Button>
+                <Button onClick={() => {
+                  setInviteMessage("")
+                  setInviteLink("")
+                }}>
+                  Invite Another
+                </Button>
+              </DialogFooter>
+            </div>
+          ) : (
+            <>
+              <div>
+                <Label htmlFor="inviteEmail">Email Address</Label>
+                <Input
+                  id="inviteEmail"
+                  type="email"
+                  value={inviteEmail}
+                  onChange={(e) => setInviteEmail(e.target.value)}
+                  placeholder="colleague@example.com"
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      e.preventDefault()
+                      handleInviteMember()
+                    }
+                  }}
+                />
+                <p className="text-xs text-muted-foreground mt-2">
+                  If the user has an account, they&apos;ll be added immediately.
+                  Otherwise, you&apos;ll get a shareable invite link.
+                </p>
+              </div>
+              <DialogFooter>
+                <Button variant="outline" onClick={handleCloseInvite}>
+                  Cancel
+                </Button>
+                <Button onClick={handleInviteMember} disabled={!inviteEmail.trim()}>
+                  Send Invitation
+                </Button>
+              </DialogFooter>
+            </>
+          )}
         </DialogContent>
       </Dialog>
 
