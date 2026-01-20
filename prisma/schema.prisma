@@ -19,17 +19,68 @@ model User {
   createdAt      DateTime  @default(now())
   updatedAt      DateTime  @updatedAt
 
+  // Organization membership
+  organizationId String?
+  organization   Organization? @relation("OrganizationMembers", fields: [organizationId], references: [id], onDelete: SetNull)
+  orgRole        OrgRole       @default(MEMBER)
+
   // Relations
-  ownedProjects    Project[]         @relation("ProjectOwner")
-  projectMembers   ProjectMember[]
-  timeEntries      TimeEntry[]
-  sentInvitations  Invitation[]      @relation("InvitationSender")
-  recurringEntries RecurringEntry[]
-  timeTemplates    TimeTemplate[]
-  favoriteProjects FavoriteProject[]
-  entryComments    EntryComment[]
+  ownedOrganizations Organization[]    @relation("OrganizationOwner")
+  ownedProjects      Project[]         @relation("ProjectOwner")
+  projectMembers     ProjectMember[]
+  timeEntries        TimeEntry[]
+  sentInvitations    Invitation[]      @relation("InvitationSender")
+  orgInvitations     OrgInvitation[]   @relation("OrgInvitationSender")
+  recurringEntries   RecurringEntry[]
+  timeTemplates      TimeTemplate[]
+  favoriteProjects   FavoriteProject[]
+  entryComments      EntryComment[]
 
   @@map("users")
+}
+
+// Organization/Workspace - all members share access to all data
+model Organization {
+  id        String   @id @default(cuid())
+  name      String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Owner relation
+  ownerId String
+  owner   User   @relation("OrganizationOwner", fields: [ownerId], references: [id], onDelete: Cascade)
+
+  // Relations
+  members     User[]          @relation("OrganizationMembers")
+  projects    Project[]
+  invitations OrgInvitation[]
+
+  @@map("organizations")
+}
+
+// Invitation to join an organization
+model OrgInvitation {
+  id        String           @id @default(cuid())
+  email     String
+  token     String           @unique
+  role      OrgRole          @default(MEMBER)
+  status    InvitationStatus @default(PENDING)
+  expiresAt DateTime
+  createdAt DateTime         @default(now())
+
+  // Relations
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  senderId       String
+  sender         User         @relation("OrgInvitationSender", fields: [senderId], references: [id], onDelete: Cascade)
+
+  @@map("org_invitations")
+}
+
+enum OrgRole {
+  OWNER
+  ADMIN
+  MEMBER
 }
 
 model Project {
@@ -46,6 +97,10 @@ model Project {
   // Owner relation
   ownerId     String
   owner       User     @relation("ProjectOwner", fields: [ownerId], references: [id], onDelete: Cascade)
+
+  // Organization relation (if part of an org, all org members have access)
+  organizationId String?
+  organization   Organization? @relation(fields: [organizationId], references: [id], onDelete: Cascade)
 
   // Relations
   members          ProjectMember[]

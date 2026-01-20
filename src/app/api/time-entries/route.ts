@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server"
 import { auth } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
+import { getOrgUserIds, getUserOrgId } from "@/lib/organization"
 
 // Get time entries
 export async function GET(request: Request) {
@@ -15,25 +16,42 @@ export async function GET(request: Request) {
     const startDate = searchParams.get("startDate")
     const endDate = searchParams.get("endDate")
     const userId = searchParams.get("userId")
+    const allMembers = searchParams.get("allMembers") === "true"
 
     // Build where clause
     const where: Record<string, unknown> = {}
 
-    // Check if user can view other users' entries (must be project owner)
-    if (userId && userId !== session.user.id) {
-      // Verify the requesting user is an owner of projects the target user is in
-      const ownerCheck = await prisma.project.findFirst({
-        where: {
-          ownerId: session.user.id,
-          members: {
-            some: { userId }
-          }
+    // Get organization context
+    const orgId = await getUserOrgId(session.user.id)
+
+    if (allMembers && orgId) {
+      // Show all organization members' entries
+      const orgUserIds = await getOrgUserIds(session.user.id)
+      where.userId = { in: orgUserIds }
+    } else if (userId && userId !== session.user.id) {
+      // Check if user can view other users' entries
+      if (orgId) {
+        // In org context, any member can view other members' entries
+        const orgUserIds = await getOrgUserIds(session.user.id)
+        if (!orgUserIds.includes(userId)) {
+          return NextResponse.json({ error: "Unauthorized" }, { status: 403 })
         }
-      })
-      if (!ownerCheck) {
-        return NextResponse.json({ error: "Unauthorized" }, { status: 403 })
+        where.userId = userId
+      } else {
+        // Outside org, must be project owner
+        const ownerCheck = await prisma.project.findFirst({
+          where: {
+            ownerId: session.user.id,
+            members: {
+              some: { userId }
+            }
+          }
+        })
+        if (!ownerCheck) {
+          return NextResponse.json({ error: "Unauthorized" }, { status: 403 })
+        }
+        where.userId = userId
       }
-      where.userId = userId
     } else {
       where.userId = session.user.id
     }
@@ -86,13 +104,20 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Project is required" }, { status: 400 })
     }
 
+    // Get user's organization ID
+    const orgId = await getUserOrgId(session.user.id)
+
     // Verify user has access to project
     const project = await prisma.project.findFirst({
       where: {
         id: projectId,
         OR: [
+          // User owns the project
           { ownerId: session.user.id },
-          { members: { some: { userId: session.user.id } } }
+          // User is a project member
+          { members: { some: { userId: session.user.id } } },
+          // Project is in user's organization
+          ...(orgId ? [{ organizationId: orgId }] : [])
         ]
       }
     })

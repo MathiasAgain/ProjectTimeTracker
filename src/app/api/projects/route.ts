@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server"
 import { auth } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
+import { getUserOrgId } from "@/lib/organization"
 
 // Get projects
 export async function GET() {
@@ -10,14 +11,27 @@ export async function GET() {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
 
+    // Get user's organization ID
+    const orgId = await getUserOrgId(session.user.id)
+
+    // Build where clause based on organization membership
+    const whereClause = orgId
+      ? {
+          // If user is in an organization, show all org projects
+          organizationId: orgId,
+          archived: false
+        }
+      : {
+          // Otherwise, show own projects or projects user is a member of
+          OR: [
+            { ownerId: session.user.id },
+            { members: { some: { userId: session.user.id } } }
+          ],
+          archived: false
+        }
+
     const projects = await prisma.project.findMany({
-      where: {
-        OR: [
-          { ownerId: session.user.id },
-          { members: { some: { userId: session.user.id } } }
-        ],
-        archived: false
-      },
+      where: whereClause,
       include: {
         owner: {
           select: { id: true, name: true, email: true }
@@ -57,12 +71,16 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Name is required" }, { status: 400 })
     }
 
+    // Get user's organization ID for new projects
+    const orgId = await getUserOrgId(session.user.id)
+
     const project = await prisma.project.create({
       data: {
         name,
         description: description || null,
         color: color || "#3B82F6",
         ownerId: session.user.id,
+        organizationId: orgId, // Assign to organization if user is in one
         members: {
           create: {
             userId: session.user.id,

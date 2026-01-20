@@ -16,7 +16,8 @@ import {
   Repeat,
   FileText,
   Calendar,
-  UsersRound
+  UsersRound,
+  Building2
 } from "lucide-react"
 import { useState } from "react"
 import { Button } from "@/components/ui/button"
@@ -28,7 +29,7 @@ const navigation = [
   { name: "Projects", href: "/projects", icon: FolderKanban },
   { name: "Templates", href: "/templates", icon: FileText },
   { name: "Recurring", href: "/recurring", icon: Repeat },
-  { name: "Team", href: "/team", icon: Users },
+  { name: "Organization", href: "/organization", icon: Building2 },
   { name: "Team Dashboard", href: "/team-dashboard", icon: UsersRound },
   { name: "Reports", href: "/reports", icon: BarChart3 },
   { name: "Settings", href: "/settings", icon: Settings },
