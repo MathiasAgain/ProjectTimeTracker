@@ -31,7 +31,8 @@ import {
   Mail,
   Copy,
   Check,
-  LogOut
+  LogOut,
+  X
 } from "lucide-react"
 
 interface Organization {
@@ -223,6 +224,25 @@ export default function OrganizationPage() {
       }
     } catch {
       alert("Failed to remove member")
+    }
+  }
+
+  const handleCancelInvitation = async (inviteId: string) => {
+    if (!confirm("Are you sure you want to cancel this invitation?")) return
+
+    try {
+      const res = await fetch(`/api/organization/invite/${inviteId}`, {
+        method: "DELETE"
+      })
+
+      if (res.ok) {
+        fetchData()
+      } else {
+        const data = await res.json()
+        alert(data.error || "Failed to cancel invitation")
+      }
+    } catch {
+      alert("Failed to cancel invitation")
     }
   }
 
@@ -464,6 +484,14 @@ export default function OrganizationPage() {
                       Invited as {invite.role} · Expires {new Date(invite.expiresAt).toLocaleDateString()}
                     </p>
                   </div>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => handleCancelInvitation(invite.id)}
+                    title="Cancel invitation"
+                  >
+                    <X className="h-4 w-4 text-destructive" />
+                  </Button>
                 </div>
               ))}
             </div>
