@@ -2,9 +2,10 @@
 
 import { useEffect, useState } from "react"
 import { useParams, useRouter } from "next/navigation"
+import { useSession } from "next-auth/react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { Building2, Check, X } from "lucide-react"
+import { Building2, Check, X, LogIn, UserPlus } from "lucide-react"
 import Link from "next/link"
 
 interface InvitationData {
@@ -22,11 +23,14 @@ interface InvitationData {
 export default function OrgInvitePage() {
   const params = useParams()
   const router = useRouter()
+  const { data: session, status: sessionStatus } = useSession()
   const [invitation, setInvitation] = useState<InvitationData | null>(null)
   const [loading, setLoading] = useState(true)
   const [accepting, setAccepting] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState(false)
+
+  const isLoggedIn = sessionStatus === "authenticated" && !!session?.user
 
   useEffect(() => {
     const fetchInvitation = async () => {
@@ -147,19 +151,44 @@ export default function OrgInvitePage() {
             </div>
           )}
 
+          {!isLoggedIn && sessionStatus !== "loading" && (
+            <div className="p-3 bg-amber-100 dark:bg-amber-900/30 text-amber-800 dark:text-amber-200 text-sm rounded-lg text-center">
+              Please log in to accept this invitation
+            </div>
+          )}
+
           <div className="space-y-3">
-            <Button
-              className="w-full"
-              onClick={handleAccept}
-              disabled={accepting}
-            >
-              {accepting ? "Accepting..." : "Accept Invitation"}
-            </Button>
-            <Link href="/dashboard" className="block">
-              <Button variant="outline" className="w-full">
-                Decline
-              </Button>
-            </Link>
+            {isLoggedIn ? (
+              <>
+                <Button
+                  className="w-full"
+                  onClick={handleAccept}
+                  disabled={accepting}
+                >
+                  {accepting ? "Accepting..." : "Accept Invitation"}
+                </Button>
+                <Link href="/dashboard" className="block">
+                  <Button variant="outline" className="w-full">
+                    Decline
+                  </Button>
+                </Link>
+              </>
+            ) : (
+              <>
+                <Link href={`/login?callbackUrl=/org-invite/${params.token}`} className="block">
+                  <Button className="w-full">
+                    <LogIn className="h-4 w-4 mr-2" />
+                    Log In to Accept
+                  </Button>
+                </Link>
+                <Link href={`/register?callbackUrl=/org-invite/${params.token}`} className="block">
+                  <Button variant="outline" className="w-full">
+                    <UserPlus className="h-4 w-4 mr-2" />
+                    Create Account
+                  </Button>
+                </Link>
+              </>
+            )}
           </div>
 
           <p className="text-xs text-center text-muted-foreground">
