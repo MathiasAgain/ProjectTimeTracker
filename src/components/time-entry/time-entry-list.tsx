@@ -86,7 +86,12 @@ export function TimeEntryList({
   const [newComment, setNewComment] = useState("")
   const [loadingComments, setLoadingComments] = useState(false)
 
-  const groupedEntries = entries.reduce((groups, entry) => {
+  // Sort entries by date (most recent first) and group by date
+  const sortedEntries = [...entries].sort((a, b) =>
+    new Date(b.startTime).getTime() - new Date(a.startTime).getTime()
+  )
+
+  const groupedEntries = sortedEntries.reduce((groups, entry) => {
     const date = formatDate(new Date(entry.startTime))
     if (!groups[date]) {
       groups[date] = []
@@ -94,6 +99,14 @@ export function TimeEntryList({
     groups[date].push(entry)
     return groups
   }, {} as Record<string, TimeEntry[]>)
+
+  // Sort date groups (most recent first)
+  const sortedDateGroups = Object.entries(groupedEntries).sort((a, b) => {
+    // Parse the formatted dates back to compare them
+    const dateA = new Date(a[1][0].startTime)
+    const dateB = new Date(b[1][0].startTime)
+    return dateB.getTime() - dateA.getTime()
+  })
 
   const handleEditOpen = (entry: TimeEntry) => {
     setEditingEntry(entry)
@@ -200,7 +213,7 @@ export function TimeEntryList({
   return (
     <>
       <div className="space-y-6">
-        {Object.entries(groupedEntries).map(([date, dayEntries]) => {
+        {sortedDateGroups.map(([date, dayEntries]) => {
           const totalDuration = dayEntries.reduce(
             (sum, entry) => sum + (entry.duration || 0),
             0
