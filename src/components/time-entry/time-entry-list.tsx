@@ -20,6 +20,7 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { Pencil, Trash2, X, Copy, Star, MessageSquare, Send } from "lucide-react"
+import { DatePicker } from "@/components/ui/date-picker"
 
 interface TimeEntry {
   id: string
@@ -75,7 +76,7 @@ export function TimeEntryList({
   const [editTags, setEditTags] = useState<string[]>([])
   const [editHours, setEditHours] = useState("0")
   const [editMinutes, setEditMinutes] = useState("0")
-  const [editDate, setEditDate] = useState("")
+  const [editDate, setEditDate] = useState<Date | undefined>(undefined)
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
 
@@ -103,9 +104,8 @@ export function TimeEntryList({
     const duration = entry.duration || 0
     setEditHours(Math.floor(duration / 3600).toString())
     setEditMinutes(Math.floor((duration % 3600) / 60).toString())
-    // Format date for input (YYYY-MM-DD)
-    const startDate = new Date(entry.startTime)
-    setEditDate(startDate.toISOString().split("T")[0])
+    // Set date from entry
+    setEditDate(new Date(entry.startTime))
   }
 
   const handleAddTag = (tag: string) => {
@@ -119,7 +119,7 @@ export function TimeEntryList({
   }
 
   const handleEditSave = async () => {
-    if (!editingEntry) return
+    if (!editingEntry || !editDate) return
     setLoading(true)
     try {
       const duration = parseInt(editHours) * 3600 + parseInt(editMinutes) * 60
@@ -398,10 +398,10 @@ export function TimeEntryList({
             </div>
             <div>
               <label className="text-sm font-medium">Date</label>
-              <Input
-                type="date"
-                value={editDate}
-                onChange={(e) => setEditDate(e.target.value)}
+              <DatePicker
+                date={editDate}
+                onDateChange={setEditDate}
+                placeholder="Select date"
               />
             </div>
             <div className="grid grid-cols-2 gap-4">
