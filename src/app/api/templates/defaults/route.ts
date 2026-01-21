@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server"
 import { auth } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
+import { getUserOrgId } from "@/lib/organization"
 
 // Create default templates for all user's projects that don't have them
 export async function POST() {
@@ -10,9 +11,18 @@ export async function POST() {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
 
-    // Get all projects owned by the user
+    // Get organization context
+    const orgId = await getUserOrgId(session.user.id)
+
+    // Get all projects the user has access to
     const projects = await prisma.project.findMany({
-      where: { ownerId: session.user.id },
+      where: {
+        OR: [
+          { ownerId: session.user.id },
+          { members: { some: { userId: session.user.id } } },
+          ...(orgId ? [{ organizationId: orgId }] : [])
+        ]
+      },
       select: { id: true, name: true }
     })
 
