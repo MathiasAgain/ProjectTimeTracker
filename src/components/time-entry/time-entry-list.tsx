@@ -51,7 +51,7 @@ interface Comment {
 
 interface TimeEntryListProps {
   entries: TimeEntry[]
-  onEdit: (id: string, data: { activity?: string; subtask?: string; notes?: string; tags?: string[]; description?: string; duration: number }) => Promise<void>
+  onEdit: (id: string, data: { activity?: string; subtask?: string; notes?: string; tags?: string[]; description?: string; duration: number; startTime?: string }) => Promise<void>
   onDelete: (id: string) => Promise<void>
   onDuplicate?: (id: string) => Promise<void>
   onToggleFavorite?: (projectId: string) => Promise<void>
@@ -75,6 +75,7 @@ export function TimeEntryList({
   const [editTags, setEditTags] = useState<string[]>([])
   const [editHours, setEditHours] = useState("0")
   const [editMinutes, setEditMinutes] = useState("0")
+  const [editDate, setEditDate] = useState("")
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
 
@@ -102,6 +103,9 @@ export function TimeEntryList({
     const duration = entry.duration || 0
     setEditHours(Math.floor(duration / 3600).toString())
     setEditMinutes(Math.floor((duration % 3600) / 60).toString())
+    // Format date for input (YYYY-MM-DD)
+    const startDate = new Date(entry.startTime)
+    setEditDate(startDate.toISOString().split("T")[0])
   }
 
   const handleAddTag = (tag: string) => {
@@ -119,12 +123,18 @@ export function TimeEntryList({
     setLoading(true)
     try {
       const duration = parseInt(editHours) * 3600 + parseInt(editMinutes) * 60
+      // Preserve the original time but update the date
+      const originalStart = new Date(editingEntry.startTime)
+      const newDate = new Date(editDate)
+      newDate.setHours(originalStart.getHours(), originalStart.getMinutes(), originalStart.getSeconds())
+
       await onEdit(editingEntry.id, {
         activity: editActivity,
         subtask: editSubtask,
         notes: editNotes,
         tags: editTags,
-        duration
+        duration,
+        startTime: newDate.toISOString()
       })
       setEditingEntry(null)
     } finally {
@@ -385,6 +395,14 @@ export function TimeEntryList({
                   ))}
                 </div>
               )}
+            </div>
+            <div>
+              <label className="text-sm font-medium">Date</label>
+              <Input
+                type="date"
+                value={editDate}
+                onChange={(e) => setEditDate(e.target.value)}
+              />
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div>

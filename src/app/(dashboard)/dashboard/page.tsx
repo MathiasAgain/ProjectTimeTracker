@@ -210,7 +210,7 @@ export default function DashboardPage() {
     }
   }
 
-  const handleEditEntry = async (id: string, data: { activity?: string; subtask?: string; notes?: string; tags?: string[]; description?: string; duration: number }) => {
+  const handleEditEntry = async (id: string, data: { activity?: string; subtask?: string; notes?: string; tags?: string[]; description?: string; duration: number; startTime?: string }) => {
     const response = await fetch(`/api/time-entries/${id}`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
