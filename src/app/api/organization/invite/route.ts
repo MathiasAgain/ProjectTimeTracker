@@ -127,7 +127,7 @@ export async function POST(request: Request) {
     })
 
     // Send email if Resend is configured
-    const inviteUrl = `${process.env.NEXTAUTH_URL || "http://localhost:3000"}/org-invite/${token}`
+    const inviteUrl = `${process.env.NEXTAUTH_URL || "https://project-time-tracker-blue.vercel.app"}/org-invite/${token}`
 
     if (resend) {
       try {

@@ -3,7 +3,7 @@ import { Resend } from "resend"
 const resend = new Resend(process.env.RESEND_API_KEY)
 
 const APP_NAME = "Time Tracker"
-const FROM_EMAIL = "Time Tracker <onboarding@resend.dev>" // Use your verified domain in production
+const FROM_EMAIL = process.env.RESEND_FROM_EMAIL || "Time Tracker <onboarding@resend.dev>"
 
 interface SendEmailOptions {
   to: string
