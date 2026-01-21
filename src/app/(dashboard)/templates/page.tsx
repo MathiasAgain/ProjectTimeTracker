@@ -22,6 +22,7 @@ import {
 } from "@/components/ui/select"
 import { Plus, Trash2, Play, Sparkles, Clock, Users, Coffee, CheckCircle2, Info } from "lucide-react"
 import { formatDuration } from "@/lib/utils"
+import { useToast } from "@/hooks/use-toast"
 
 interface Project {
   id: string
@@ -90,6 +91,7 @@ const DEFAULT_TEMPLATES = [
 ]
 
 export default function TemplatesPage() {
+  const { toast } = useToast()
   const [templates, setTemplates] = useState<TimeTemplate[]>([])
   const [projects, setProjects] = useState<Project[]>([])
   const [loading, setLoading] = useState(true)
@@ -158,6 +160,17 @@ export default function TemplatesPage() {
       fetchData()
       resetForm()
       setShowNew(false)
+      toast({
+        title: "Template created",
+        description: `"${name}" template has been saved`,
+        variant: "success",
+      })
+    } else {
+      toast({
+        title: "Error",
+        description: "Failed to create template",
+        variant: "destructive",
+      })
     }
   }
 
@@ -169,7 +182,17 @@ export default function TemplatesPage() {
     })
 
     if (response.ok) {
-      alert(`Time entry created for today: ${template.name} (${formatDuration(template.duration)})`)
+      toast({
+        title: "Time entry created",
+        description: `${template.name} (${formatDuration(template.duration)}) added for today`,
+        variant: "success",
+      })
+    } else {
+      toast({
+        title: "Error",
+        description: "Failed to create time entry",
+        variant: "destructive",
+      })
     }
   }
 
@@ -180,6 +203,10 @@ export default function TemplatesPage() {
 
     if (response.ok) {
       setTemplates(templates.filter((t) => t.id !== id))
+      toast({
+        title: "Template deleted",
+        description: "The template has been removed",
+      })
     }
   }
 
@@ -239,7 +266,17 @@ export default function TemplatesPage() {
     fetchData()
 
     if (created > 0) {
-      alert(`Successfully added ${created} template${created > 1 ? "s" : ""}!`)
+      toast({
+        title: "Templates added",
+        description: `Successfully added ${created} template${created > 1 ? "s" : ""}`,
+        variant: "success",
+      })
+    } else {
+      toast({
+        title: "Error",
+        description: "Failed to add templates",
+        variant: "destructive",
+      })
     }
   }
 

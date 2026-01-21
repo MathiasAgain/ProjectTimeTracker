@@ -34,6 +34,7 @@ import {
   LogOut,
   X
 } from "lucide-react"
+import { useToast } from "@/hooks/use-toast"
 
 interface Organization {
   id: string
@@ -70,6 +71,7 @@ interface Invitation {
 }
 
 export default function OrganizationPage() {
+  const { toast } = useToast()
   const [organization, setOrganization] = useState<Organization | null>(null)
   const [userRole, setUserRole] = useState<"OWNER" | "ADMIN" | "MEMBER">("MEMBER")
   const [members, setMembers] = useState<Member[]>([])
@@ -143,12 +145,25 @@ export default function OrganizationPage() {
         setShowCreateOrg(false)
         setNewOrgName("")
         fetchData()
+        toast({
+          title: "Organization created",
+          description: "Your organization has been set up successfully",
+          variant: "success",
+        })
       } else {
         const data = await res.json()
-        alert(data.error || "Failed to create organization")
+        toast({
+          title: "Error",
+          description: data.error || "Failed to create organization",
+          variant: "destructive",
+        })
       }
     } catch {
-      alert("Failed to create organization")
+      toast({
+        title: "Error",
+        description: "Failed to create organization",
+        variant: "destructive",
+      })
     } finally {
       setCreating(false)
     }
@@ -170,12 +185,25 @@ export default function OrganizationPage() {
         setLastInviteUrl(data.inviteUrl)
         setInviteEmail("")
         fetchData()
+        toast({
+          title: "Invitation sent",
+          description: "The invitation has been sent successfully",
+          variant: "success",
+        })
       } else {
         const data = await res.json()
-        alert(data.error || "Failed to send invitation")
+        toast({
+          title: "Error",
+          description: data.error || "Failed to send invitation",
+          variant: "destructive",
+        })
       }
     } catch {
-      alert("Failed to send invitation")
+      toast({
+        title: "Error",
+        description: "Failed to send invitation",
+        variant: "destructive",
+      })
     } finally {
       setInviting(false)
     }
@@ -199,18 +227,31 @@ export default function OrganizationPage() {
 
       if (res.ok) {
         fetchData()
+        toast({
+          title: "Role updated",
+          description: `Member role changed to ${newRole.toLowerCase()}`,
+        })
       } else {
         const data = await res.json()
-        alert(data.error || "Failed to update role")
+        toast({
+          title: "Error",
+          description: data.error || "Failed to update role",
+          variant: "destructive",
+        })
       }
     } catch {
-      alert("Failed to update role")
+      toast({
+        title: "Error",
+        description: "Failed to update role",
+        variant: "destructive",
+      })
     }
   }
 
-  const handleRemoveMember = async (memberId: string) => {
-    if (!confirm("Are you sure you want to remove this member?")) return
+  const [showRemoveMemberConfirm, setShowRemoveMemberConfirm] = useState(false)
+  const [memberToRemove, setMemberToRemove] = useState<string | null>(null)
 
+  const handleRemoveMember = async (memberId: string) => {
     try {
       const res = await fetch(`/api/organization/members/${memberId}`, {
         method: "DELETE"
@@ -218,18 +259,33 @@ export default function OrganizationPage() {
 
       if (res.ok) {
         fetchData()
+        setShowRemoveMemberConfirm(false)
+        setMemberToRemove(null)
+        toast({
+          title: "Member removed",
+          description: "The member has been removed from the organization",
+        })
       } else {
         const data = await res.json()
-        alert(data.error || "Failed to remove member")
+        toast({
+          title: "Error",
+          description: data.error || "Failed to remove member",
+          variant: "destructive",
+        })
       }
     } catch {
-      alert("Failed to remove member")
+      toast({
+        title: "Error",
+        description: "Failed to remove member",
+        variant: "destructive",
+      })
     }
   }
 
-  const handleCancelInvitation = async (inviteId: string) => {
-    if (!confirm("Are you sure you want to cancel this invitation?")) return
+  const [showCancelInviteConfirm, setShowCancelInviteConfirm] = useState(false)
+  const [inviteToCancel, setInviteToCancel] = useState<string | null>(null)
 
+  const handleCancelInvitation = async (inviteId: string) => {
     try {
       const res = await fetch(`/api/organization/invite/${inviteId}`, {
         method: "DELETE"
@@ -237,12 +293,26 @@ export default function OrganizationPage() {
 
       if (res.ok) {
         fetchData()
+        setShowCancelInviteConfirm(false)
+        setInviteToCancel(null)
+        toast({
+          title: "Invitation cancelled",
+          description: "The invitation has been cancelled",
+        })
       } else {
         const data = await res.json()
-        alert(data.error || "Failed to cancel invitation")
+        toast({
+          title: "Error",
+          description: data.error || "Failed to cancel invitation",
+          variant: "destructive",
+        })
       }
     } catch {
-      alert("Failed to cancel invitation")
+      toast({
+        title: "Error",
+        description: "Failed to cancel invitation",
+        variant: "destructive",
+      })
     }
   }
 
@@ -254,13 +324,25 @@ export default function OrganizationPage() {
       })
 
       if (res.ok) {
+        toast({
+          title: "Left organization",
+          description: "You have left the organization",
+        })
         window.location.reload()
       } else {
         const data = await res.json()
-        alert(data.error || "Failed to leave organization")
+        toast({
+          title: "Error",
+          description: data.error || "Failed to leave organization",
+          variant: "destructive",
+        })
       }
     } catch {
-      alert("Failed to leave organization")
+      toast({
+        title: "Error",
+        description: "Failed to leave organization",
+        variant: "destructive",
+      })
     } finally {
       setActionLoading(false)
       setShowLeaveConfirm(false)
@@ -275,13 +357,25 @@ export default function OrganizationPage() {
       })
 
       if (res.ok) {
+        toast({
+          title: "Organization deleted",
+          description: "The organization has been deleted",
+        })
         window.location.reload()
       } else {
         const data = await res.json()
-        alert(data.error || "Failed to delete organization")
+        toast({
+          title: "Error",
+          description: data.error || "Failed to delete organization",
+          variant: "destructive",
+        })
       }
     } catch {
-      alert("Failed to delete organization")
+      toast({
+        title: "Error",
+        description: "Failed to delete organization",
+        variant: "destructive",
+      })
     } finally {
       setActionLoading(false)
       setShowDeleteConfirm(false)
@@ -449,7 +543,10 @@ export default function OrganizationPage() {
                       <Button
                         variant="ghost"
                         size="icon"
-                        onClick={() => handleRemoveMember(member.id)}
+                        onClick={() => {
+                          setMemberToRemove(member.id)
+                          setShowRemoveMemberConfirm(true)
+                        }}
                       >
                         <Trash2 className="h-4 w-4 text-destructive" />
                       </Button>
@@ -487,7 +584,10 @@ export default function OrganizationPage() {
                   <Button
                     variant="ghost"
                     size="icon"
-                    onClick={() => handleCancelInvitation(invite.id)}
+                    onClick={() => {
+                      setInviteToCancel(invite.id)
+                      setShowCancelInviteConfirm(true)
+                    }}
                     title="Cancel invitation"
                   >
                     <X className="h-4 w-4 text-destructive" />
@@ -650,6 +750,52 @@ export default function OrganizationPage() {
             </Button>
             <Button variant="destructive" onClick={handleDeleteOrg} disabled={actionLoading}>
               {actionLoading ? "Deleting..." : "Delete Organization"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Remove Member Confirmation */}
+      <Dialog open={showRemoveMemberConfirm} onOpenChange={setShowRemoveMemberConfirm}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Remove Member?</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to remove this member from the organization?
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => {
+              setShowRemoveMemberConfirm(false)
+              setMemberToRemove(null)
+            }}>
+              Cancel
+            </Button>
+            <Button variant="destructive" onClick={() => memberToRemove && handleRemoveMember(memberToRemove)}>
+              Remove Member
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Cancel Invitation Confirmation */}
+      <Dialog open={showCancelInviteConfirm} onOpenChange={setShowCancelInviteConfirm}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Cancel Invitation?</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to cancel this invitation?
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => {
+              setShowCancelInviteConfirm(false)
+              setInviteToCancel(null)
+            }}>
+              Keep Invitation
+            </Button>
+            <Button variant="destructive" onClick={() => inviteToCancel && handleCancelInvitation(inviteToCancel)}>
+              Cancel Invitation
             </Button>
           </DialogFooter>
         </DialogContent>

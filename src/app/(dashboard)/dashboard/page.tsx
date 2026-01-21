@@ -24,6 +24,8 @@ import {
 } from "@/components/ui/select"
 import { formatDuration } from "@/lib/utils"
 import { getTagClasses, PREDEFINED_TAGS } from "@/lib/tag-colors"
+import { WeeklyBreakdown } from "@/components/charts/weekly-breakdown"
+import { GettingStarted } from "@/components/onboarding/getting-started"
 import Link from "next/link"
 
 interface TagInfo {
@@ -210,6 +212,19 @@ export default function DashboardPage() {
     }
   }
 
+  const handleUpdateTimerDescription = async (id: string, description: string) => {
+    const response = await fetch(`/api/time-entries/${id}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ description })
+    })
+
+    if (response.ok) {
+      const updated = await response.json()
+      setActiveEntry(prev => prev ? { ...prev, description: updated.description } : null)
+    }
+  }
+
   const handleEditEntry = async (id: string, data: { activity?: string; subtask?: string; notes?: string; tags?: string[]; description?: string; duration: number; startTime?: string }) => {
     const response = await fetch(`/api/time-entries/${id}`, {
       method: "PUT",
@@ -341,6 +356,14 @@ export default function DashboardPage() {
         </div>
       </div>
 
+      {/* Getting Started Guide - shown for new users */}
+      {(projects.length === 0 || entries.length < 3) && (
+        <GettingStarted
+          hasProjects={projects.length > 0}
+          hasEntries={entries.length > 0}
+        />
+      )}
+
       {/* Favorite Projects */}
       {favorites.length > 0 && (
         <Card>
@@ -376,6 +399,7 @@ export default function DashboardPage() {
           projects={projects}
           onStart={handleStartTimer}
           onStop={handleStopTimer}
+          onUpdateDescription={handleUpdateTimerDescription}
           activeEntry={activeEntry}
         />
       ) : (
@@ -393,7 +417,7 @@ export default function DashboardPage() {
       )}
 
       {/* Stats */}
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-sm font-medium">Today</CardTitle>
@@ -432,6 +456,9 @@ export default function DashboardPage() {
             </p>
           </CardContent>
         </Card>
+
+        {/* Weekly Breakdown Chart */}
+        <WeeklyBreakdown entries={entries} />
       </div>
 
       {/* Recent Entries with Search and Tag Filter */}

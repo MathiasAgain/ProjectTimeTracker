@@ -46,20 +46,28 @@ export async function GET(request: Request) {
       orderBy: { startTime: "asc" }
     })
 
-    // Calculate totals by project
+    // Calculate totals by project (including billable breakdown)
     const projectTotals = entries.reduce((acc, entry) => {
       const key = entry.project.id
       if (!acc[key]) {
         acc[key] = {
           project: entry.project,
           totalDuration: 0,
+          billableDuration: 0,
+          nonBillableDuration: 0,
           entryCount: 0
         }
       }
-      acc[key].totalDuration += entry.duration || 0
+      const duration = entry.duration || 0
+      acc[key].totalDuration += duration
+      if (entry.billable) {
+        acc[key].billableDuration += duration
+      } else {
+        acc[key].nonBillableDuration += duration
+      }
       acc[key].entryCount += 1
       return acc
-    }, {} as Record<string, { project: typeof entries[0]["project"]; totalDuration: number; entryCount: number }>)
+    }, {} as Record<string, { project: typeof entries[0]["project"]; totalDuration: number; billableDuration: number; nonBillableDuration: number; entryCount: number }>)
 
     // Calculate daily totals
     const dailyTotals = entries.reduce((acc, entry) => {
@@ -79,12 +87,16 @@ export async function GET(request: Request) {
 
     // Calculate overall totals
     const totalDuration = entries.reduce((sum, e) => sum + (e.duration || 0), 0)
+    const totalBillable = entries.reduce((sum, e) => e.billable ? sum + (e.duration || 0) : sum, 0)
+    const totalNonBillable = totalDuration - totalBillable
     const totalEntries = entries.length
 
     return NextResponse.json({
       projectData,
       dailyData,
       totalDuration,
+      totalBillable,
+      totalNonBillable,
       totalEntries
     })
   } catch (error) {

@@ -1,18 +1,33 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useCallback } from "react"
 import { useSession } from "next-auth/react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 import { useTheme } from "@/components/theme-provider"
-import { Moon, Sun, Monitor, User, Shield, Bell } from "lucide-react"
+import { Moon, Sun, Monitor, User, Shield, Bell, Clock, FolderKanban } from "lucide-react"
+import { useToast } from "@/hooks/use-toast"
+
+interface Project {
+  id: string
+  name: string
+  color: string
+}
 
 export default function SettingsPage() {
   const { data: session, update } = useSession()
   const { theme, setTheme } = useTheme()
+  const { toast } = useToast()
   const [name, setName] = useState("")
   const [email, setEmail] = useState("")
   const [currentPassword, setCurrentPassword] = useState("")
@@ -22,12 +37,72 @@ export default function SettingsPage() {
   const [message, setMessage] = useState("")
   const [error, setError] = useState("")
 
+  // Preferences state
+  const [projects, setProjects] = useState<Project[]>([])
+  const [defaultProjectId, setDefaultProjectId] = useState<string>("")
+  const [workingHoursStart, setWorkingHoursStart] = useState("09:00")
+  const [workingHoursEnd, setWorkingHoursEnd] = useState("17:00")
+  const [weeklyHoursGoal, setWeeklyHoursGoal] = useState("40")
+  const [defaultBillable, setDefaultBillable] = useState(true)
+  const [reminderEnabled, setReminderEnabled] = useState(false)
+  const [preferencesLoading, setPreferencesLoading] = useState(false)
+
+  const fetchProjects = useCallback(async () => {
+    try {
+      const res = await fetch("/api/projects")
+      if (res.ok) {
+        const data = await res.json()
+        setProjects(data)
+      }
+    } catch (error) {
+      console.error("Error fetching projects:", error)
+    }
+  }, [])
+
+  useEffect(() => {
+    fetchProjects()
+    // Load preferences from localStorage
+    const savedPrefs = localStorage.getItem("timetracker-preferences")
+    if (savedPrefs) {
+      try {
+        const prefs = JSON.parse(savedPrefs)
+        setDefaultProjectId(prefs.defaultProjectId || "")
+        setWorkingHoursStart(prefs.workingHoursStart || "09:00")
+        setWorkingHoursEnd(prefs.workingHoursEnd || "17:00")
+        setWeeklyHoursGoal(prefs.weeklyHoursGoal || "40")
+        setDefaultBillable(prefs.defaultBillable !== false)
+        setReminderEnabled(prefs.reminderEnabled || false)
+      } catch {
+        // Invalid JSON, ignore
+      }
+    }
+  }, [fetchProjects])
+
   useEffect(() => {
     if (session?.user) {
       setName(session.user.name || "")
       setEmail(session.user.email || "")
     }
   }, [session])
+
+  const handleSavePreferences = () => {
+    setPreferencesLoading(true)
+    const prefs = {
+      defaultProjectId,
+      workingHoursStart,
+      workingHoursEnd,
+      weeklyHoursGoal,
+      defaultBillable,
+      reminderEnabled
+    }
+    localStorage.setItem("timetracker-preferences", JSON.stringify(prefs))
+    setPreferencesLoading(false)
+    toast({
+      title: "Preferences saved",
+      description: "Your preferences have been updated",
+      variant: "success",
+    })
+  }
 
   const handleUpdateProfile = async () => {
     setLoading(true)
@@ -215,10 +290,14 @@ export default function SettingsPage() {
           </Card>
         </TabsContent>
 
-        <TabsContent value="preferences" className="mt-6">
+        <TabsContent value="preferences" className="mt-6 space-y-6">
+          {/* Appearance */}
           <Card>
             <CardHeader>
-              <CardTitle>Appearance</CardTitle>
+              <CardTitle className="flex items-center gap-2">
+                <Monitor className="h-5 w-5" />
+                Appearance
+              </CardTitle>
               <CardDescription>
                 Customize how the app looks
               </CardDescription>
@@ -255,6 +334,151 @@ export default function SettingsPage() {
               </div>
             </CardContent>
           </Card>
+
+          {/* Time Tracking Defaults */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <FolderKanban className="h-5 w-5" />
+                Time Tracking Defaults
+              </CardTitle>
+              <CardDescription>
+                Set your default project and billing preferences
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div>
+                <Label htmlFor="defaultProject">Default Project</Label>
+                <Select value={defaultProjectId} onValueChange={setDefaultProjectId}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="No default project" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">No default project</SelectItem>
+                    {projects.map((project) => (
+                      <SelectItem key={project.id} value={project.id}>
+                        <div className="flex items-center gap-2">
+                          <div
+                            className="w-3 h-3 rounded-full"
+                            style={{ backgroundColor: project.color }}
+                          />
+                          {project.name}
+                        </div>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <p className="text-sm text-muted-foreground mt-1">
+                  Pre-selected project when starting a new timer
+                </p>
+              </div>
+
+              <div className="flex items-center justify-between">
+                <div>
+                  <Label>Default Billable</Label>
+                  <p className="text-sm text-muted-foreground">
+                    New time entries are billable by default
+                  </p>
+                </div>
+                <input
+                  type="checkbox"
+                  checked={defaultBillable}
+                  onChange={(e) => setDefaultBillable(e.target.checked)}
+                  className="h-4 w-4"
+                />
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Working Hours */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Clock className="h-5 w-5" />
+                Working Hours
+              </CardTitle>
+              <CardDescription>
+                Define your typical working schedule
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label htmlFor="workStart">Start Time</Label>
+                  <Input
+                    id="workStart"
+                    type="time"
+                    value={workingHoursStart}
+                    onChange={(e) => setWorkingHoursStart(e.target.value)}
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="workEnd">End Time</Label>
+                  <Input
+                    id="workEnd"
+                    type="time"
+                    value={workingHoursEnd}
+                    onChange={(e) => setWorkingHoursEnd(e.target.value)}
+                  />
+                </div>
+              </div>
+
+              <div>
+                <Label htmlFor="weeklyGoal">Weekly Hours Goal</Label>
+                <div className="flex items-center gap-2">
+                  <Input
+                    id="weeklyGoal"
+                    type="number"
+                    min="0"
+                    max="168"
+                    value={weeklyHoursGoal}
+                    onChange={(e) => setWeeklyHoursGoal(e.target.value)}
+                    className="w-24"
+                  />
+                  <span className="text-muted-foreground">hours per week</span>
+                </div>
+                <p className="text-sm text-muted-foreground mt-1">
+                  Used for progress tracking on the dashboard
+                </p>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Reminders */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Bell className="h-5 w-5" />
+                Reminders
+              </CardTitle>
+              <CardDescription>
+                Configure notification preferences
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <Label>Daily Reminder</Label>
+                  <p className="text-sm text-muted-foreground">
+                    Remind me to track time if no entries today
+                  </p>
+                </div>
+                <input
+                  type="checkbox"
+                  checked={reminderEnabled}
+                  onChange={(e) => setReminderEnabled(e.target.checked)}
+                  className="h-4 w-4"
+                />
+              </div>
+              <p className="text-xs text-muted-foreground bg-muted p-2 rounded">
+                Note: Browser notifications require permission to be granted when prompted.
+              </p>
+            </CardContent>
+          </Card>
+
+          <Button onClick={handleSavePreferences} disabled={preferencesLoading}>
+            {preferencesLoading ? "Saving..." : "Save Preferences"}
+          </Button>
         </TabsContent>
       </Tabs>
     </div>

@@ -12,7 +12,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { Download, Clock, Calendar, TrendingUp } from "lucide-react"
+import { Download, Clock, Calendar, TrendingUp, DollarSign, CircleDollarSign } from "lucide-react"
 import { formatDuration } from "@/lib/utils"
 import {
   PieChart,
@@ -37,6 +37,8 @@ interface Project {
 interface ProjectData {
   project: Project
   totalDuration: number
+  billableDuration: number
+  nonBillableDuration: number
   entryCount: number
 }
 
@@ -49,8 +51,52 @@ interface ReportData {
   projectData: ProjectData[]
   dailyData: DailyData[]
   totalDuration: number
+  totalBillable: number
+  totalNonBillable: number
   totalEntries: number
 }
+
+// Date presets
+const DATE_PRESETS = [
+  { label: "Today", getValue: () => {
+    const today = new Date().toISOString().split("T")[0]
+    return { start: today, end: today }
+  }},
+  { label: "This Week", getValue: () => {
+    const today = new Date()
+    const weekStart = new Date(today)
+    weekStart.setDate(today.getDate() - today.getDay())
+    return { start: weekStart.toISOString().split("T")[0], end: today.toISOString().split("T")[0] }
+  }},
+  { label: "Last 7 Days", getValue: () => {
+    const today = new Date()
+    const weekAgo = new Date(today)
+    weekAgo.setDate(today.getDate() - 7)
+    return { start: weekAgo.toISOString().split("T")[0], end: today.toISOString().split("T")[0] }
+  }},
+  { label: "This Month", getValue: () => {
+    const today = new Date()
+    const monthStart = new Date(today.getFullYear(), today.getMonth(), 1)
+    return { start: monthStart.toISOString().split("T")[0], end: today.toISOString().split("T")[0] }
+  }},
+  { label: "Last 30 Days", getValue: () => {
+    const today = new Date()
+    const monthAgo = new Date(today)
+    monthAgo.setDate(today.getDate() - 30)
+    return { start: monthAgo.toISOString().split("T")[0], end: today.toISOString().split("T")[0] }
+  }},
+  { label: "Last 90 Days", getValue: () => {
+    const today = new Date()
+    const ninetyDaysAgo = new Date(today)
+    ninetyDaysAgo.setDate(today.getDate() - 90)
+    return { start: ninetyDaysAgo.toISOString().split("T")[0], end: today.toISOString().split("T")[0] }
+  }},
+  { label: "This Year", getValue: () => {
+    const today = new Date()
+    const yearStart = new Date(today.getFullYear(), 0, 1)
+    return { start: yearStart.toISOString().split("T")[0], end: today.toISOString().split("T")[0] }
+  }},
+]
 
 export default function ReportsPage() {
   const [projects, setProjects] = useState<Project[]>([])
@@ -143,6 +189,25 @@ export default function ReportsPage() {
       {/* Filters */}
       <Card>
         <CardContent className="pt-6">
+          {/* Date Presets */}
+          <div className="flex flex-wrap gap-2 mb-4">
+            {DATE_PRESETS.map((preset) => (
+              <Button
+                key={preset.label}
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  const { start, end } = preset.getValue()
+                  setStartDate(start)
+                  setEndDate(end)
+                }}
+                className="text-xs"
+              >
+                {preset.label}
+              </Button>
+            ))}
+          </div>
+
           <div className="grid gap-4 sm:grid-cols-3">
             <div>
               <Label htmlFor="startDate">Start Date</Label>
@@ -195,7 +260,7 @@ export default function ReportsPage() {
       ) : (
         <>
           {/* Summary Stats */}
-          <div className="grid gap-4 sm:grid-cols-3">
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
             <Card>
               <CardHeader className="flex flex-row items-center justify-between pb-2">
                 <CardTitle className="text-sm font-medium">Total Time</CardTitle>
@@ -205,6 +270,38 @@ export default function ReportsPage() {
                 <div className="text-2xl font-bold">
                   {formatDuration(reportData?.totalDuration || 0)}
                 </div>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between pb-2">
+                <CardTitle className="text-sm font-medium">Billable Time</CardTitle>
+                <DollarSign className="h-4 w-4 text-green-500" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold text-green-600 dark:text-green-400">
+                  {formatDuration(reportData?.totalBillable || 0)}
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  {reportData?.totalDuration
+                    ? `${Math.round((reportData.totalBillable / reportData.totalDuration) * 100)}% of total`
+                    : "0%"}
+                </p>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between pb-2">
+                <CardTitle className="text-sm font-medium">Non-Billable</CardTitle>
+                <CircleDollarSign className="h-4 w-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold text-muted-foreground">
+                  {formatDuration(reportData?.totalNonBillable || 0)}
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  {reportData?.totalDuration
+                    ? `${Math.round((reportData.totalNonBillable / reportData.totalDuration) * 100)}% of total`
+                    : "0%"}
+                </p>
               </CardContent>
             </Card>
             <Card>
@@ -328,7 +425,9 @@ export default function ReportsPage() {
                       <tr className="border-b">
                         <th className="text-left py-3 px-4">Project</th>
                         <th className="text-right py-3 px-4">Entries</th>
-                        <th className="text-right py-3 px-4">Duration</th>
+                        <th className="text-right py-3 px-4">Total</th>
+                        <th className="text-right py-3 px-4 text-green-600 dark:text-green-400">Billable</th>
+                        <th className="text-right py-3 px-4 text-muted-foreground">Non-Billable</th>
                         <th className="text-right py-3 px-4">% of Total</th>
                       </tr>
                     </thead>
@@ -349,6 +448,12 @@ export default function ReportsPage() {
                           </td>
                           <td className="text-right py-3 px-4 font-mono">
                             {formatDuration(item.totalDuration)}
+                          </td>
+                          <td className="text-right py-3 px-4 font-mono text-green-600 dark:text-green-400">
+                            {formatDuration(item.billableDuration)}
+                          </td>
+                          <td className="text-right py-3 px-4 font-mono text-muted-foreground">
+                            {formatDuration(item.nonBillableDuration)}
                           </td>
                           <td className="text-right py-3 px-4">
                             {reportData.totalDuration

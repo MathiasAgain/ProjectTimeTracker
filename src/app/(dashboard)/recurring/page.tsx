@@ -21,6 +21,7 @@ import {
 } from "@/components/ui/select"
 import { Plus, Trash2, Play, Pause } from "lucide-react"
 import { formatDuration } from "@/lib/utils"
+import { useToast } from "@/hooks/use-toast"
 
 interface Project {
   id: string
@@ -45,6 +46,7 @@ interface RecurringEntry {
 const DAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"]
 
 export default function RecurringPage() {
+  const { toast } = useToast()
   const [entries, setEntries] = useState<RecurringEntry[]>([])
   const [projects, setProjects] = useState<Project[]>([])
   const [loading, setLoading] = useState(true)
@@ -113,6 +115,17 @@ export default function RecurringPage() {
       fetchData()
       resetForm()
       setShowNew(false)
+      toast({
+        title: "Recurring entry created",
+        description: `"${name}" has been scheduled`,
+        variant: "success",
+      })
+    } else {
+      toast({
+        title: "Error",
+        description: "Failed to create recurring entry",
+        variant: "destructive",
+      })
     }
   }
 
@@ -125,16 +138,25 @@ export default function RecurringPage() {
 
     if (response.ok) {
       fetchData()
+      toast({
+        title: entry.active ? "Entry paused" : "Entry resumed",
+        description: `"${entry.name}" has been ${entry.active ? "paused" : "resumed"}`,
+      })
     }
   }
 
   const handleDelete = async (id: string) => {
+    const entry = entries.find(e => e.id === id)
     const response = await fetch(`/api/recurring/${id}`, {
       method: "DELETE"
     })
 
     if (response.ok) {
       setEntries(entries.filter((e) => e.id !== id))
+      toast({
+        title: "Entry deleted",
+        description: entry ? `"${entry.name}" has been removed` : "Recurring entry deleted",
+      })
     }
   }
 
@@ -147,8 +169,18 @@ export default function RecurringPage() {
 
       if (response.ok) {
         const result = await response.json()
-        alert(result.message)
+        toast({
+          title: "Recurring entries processed",
+          description: result.message,
+          variant: "success",
+        })
         fetchData()
+      } else {
+        toast({
+          title: "Error",
+          description: "Failed to run recurring entries",
+          variant: "destructive",
+        })
       }
     } finally {
       setRunningRecurring(false)
