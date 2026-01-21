@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server"
 import { auth } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
+import { getOrgUserIds, getUserOrgId } from "@/lib/organization"
 
 // Update recurring entry
 export async function PUT(
@@ -16,9 +17,23 @@ export async function PUT(
     const { id } = await params
     const data = await request.json()
 
-    // Check ownership
+    // Get organization context
+    const orgId = await getUserOrgId(session.user.id)
+
+    let whereClause: { id: string; userId: string } | { id: string; userId: { in: string[] } }
+
+    if (orgId) {
+      // Allow updating entries from any org member
+      const orgUserIds = await getOrgUserIds(session.user.id)
+      whereClause = { id, userId: { in: orgUserIds } }
+    } else {
+      // Only allow updating own entries
+      whereClause = { id, userId: session.user.id }
+    }
+
+    // Check ownership or org membership
     const entry = await prisma.recurringEntry.findFirst({
-      where: { id, userId: session.user.id }
+      where: whereClause
     })
 
     if (!entry) {
@@ -41,6 +56,9 @@ export async function PUT(
       include: {
         project: {
           select: { id: true, name: true, color: true }
+        },
+        user: {
+          select: { id: true, name: true, email: true }
         }
       }
     })
@@ -65,9 +83,23 @@ export async function DELETE(
 
     const { id } = await params
 
-    // Check ownership
+    // Get organization context
+    const orgId = await getUserOrgId(session.user.id)
+
+    let whereClause: { id: string; userId: string } | { id: string; userId: { in: string[] } }
+
+    if (orgId) {
+      // Allow deleting entries from any org member
+      const orgUserIds = await getOrgUserIds(session.user.id)
+      whereClause = { id, userId: { in: orgUserIds } }
+    } else {
+      // Only allow deleting own entries
+      whereClause = { id, userId: session.user.id }
+    }
+
+    // Check ownership or org membership
     const entry = await prisma.recurringEntry.findFirst({
-      where: { id, userId: session.user.id }
+      where: whereClause
     })
 
     if (!entry) {

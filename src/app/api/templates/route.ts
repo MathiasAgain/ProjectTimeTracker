@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server"
 import { auth } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
+import { getOrgUserIds, getUserOrgId } from "@/lib/organization"
 
 // Get templates
 export async function GET() {
@@ -10,11 +11,28 @@ export async function GET() {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
 
+    // Get organization context
+    const orgId = await getUserOrgId(session.user.id)
+
+    let whereClause: { userId: string } | { userId: { in: string[] } }
+
+    if (orgId) {
+      // Show all organization members' templates
+      const orgUserIds = await getOrgUserIds(session.user.id)
+      whereClause = { userId: { in: orgUserIds } }
+    } else {
+      // Show only user's own templates
+      whereClause = { userId: session.user.id }
+    }
+
     const templates = await prisma.timeTemplate.findMany({
-      where: { userId: session.user.id },
+      where: whereClause,
       include: {
         project: {
           select: { id: true, name: true, color: true }
+        },
+        user: {
+          select: { id: true, name: true, email: true }
         }
       },
       orderBy: { createdAt: "desc" }
@@ -44,13 +62,17 @@ export async function POST(request: Request) {
       )
     }
 
+    // Get organization context
+    const orgId = await getUserOrgId(session.user.id)
+
     // Verify project access
     const project = await prisma.project.findFirst({
       where: {
         id: projectId,
         OR: [
           { ownerId: session.user.id },
-          { members: { some: { userId: session.user.id } } }
+          { members: { some: { userId: session.user.id } } },
+          ...(orgId ? [{ organizationId: orgId }] : [])
         ]
       }
     })

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server"
 import { auth } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
+import { getOrgUserIds, getUserOrgId } from "@/lib/organization"
 
 // Delete template
 export async function DELETE(
@@ -15,9 +16,23 @@ export async function DELETE(
 
     const { id } = await params
 
-    // Check ownership
+    // Get organization context
+    const orgId = await getUserOrgId(session.user.id)
+
+    let whereClause: { id: string; userId: string } | { id: string; userId: { in: string[] } }
+
+    if (orgId) {
+      // Allow deleting templates from any org member
+      const orgUserIds = await getOrgUserIds(session.user.id)
+      whereClause = { id, userId: { in: orgUserIds } }
+    } else {
+      // Only allow deleting own templates
+      whereClause = { id, userId: session.user.id }
+    }
+
+    // Check ownership or org membership
     const template = await prisma.timeTemplate.findFirst({
-      where: { id, userId: session.user.id }
+      where: whereClause
     })
 
     if (!template) {
@@ -47,9 +62,23 @@ export async function POST(
     const { id } = await params
     const { date } = await request.json()
 
+    // Get organization context
+    const orgId = await getUserOrgId(session.user.id)
+
+    let whereClause: { id: string; userId: string } | { id: string; userId: { in: string[] } }
+
+    if (orgId) {
+      // Allow using templates from any org member
+      const orgUserIds = await getOrgUserIds(session.user.id)
+      whereClause = { id, userId: { in: orgUserIds } }
+    } else {
+      // Only allow using own templates
+      whereClause = { id, userId: session.user.id }
+    }
+
     // Get template
     const template = await prisma.timeTemplate.findFirst({
-      where: { id, userId: session.user.id }
+      where: whereClause
     })
 
     if (!template) {
