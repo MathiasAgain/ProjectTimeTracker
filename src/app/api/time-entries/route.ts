@@ -24,10 +24,54 @@ export async function GET(request: Request) {
     // Get organization context
     const orgId = await getUserOrgId(session.user.id)
 
-    if (allMembers && orgId) {
+    // If projectId is specified with allMembers, show all project members' entries
+    if (projectId && allMembers) {
+      // Verify user has access to this project
+      const project = await prisma.project.findFirst({
+        where: {
+          id: projectId,
+          OR: [
+            { ownerId: session.user.id },
+            { members: { some: { userId: session.user.id } } },
+            ...(orgId ? [{ organizationId: orgId }] : [])
+          ]
+        },
+        include: {
+          members: { select: { userId: true } }
+        }
+      })
+
+      if (!project) {
+        return NextResponse.json({ error: "Project not found" }, { status: 404 })
+      }
+
+      // Get all user IDs who can have entries in this project
+      const projectUserIds = [project.ownerId, ...project.members.map(m => m.userId)]
+
+      // If project belongs to an org, include all org members
+      if (project.organizationId) {
+        const org = await prisma.organization.findUnique({
+          where: { id: project.organizationId },
+          include: { members: { select: { id: true } } }
+        })
+        if (org) {
+          org.members.forEach(m => {
+            if (!projectUserIds.includes(m.id)) {
+              projectUserIds.push(m.id)
+            }
+          })
+        }
+      }
+
+      where.userId = { in: projectUserIds }
+      where.projectId = projectId
+    } else if (allMembers && orgId) {
       // Show all organization members' entries
       const orgUserIds = await getOrgUserIds(session.user.id)
       where.userId = { in: orgUserIds }
+      if (projectId) {
+        where.projectId = projectId
+      }
     } else if (userId && userId !== session.user.id) {
       // Check if user can view other users' entries
       if (orgId) {
@@ -52,12 +96,14 @@ export async function GET(request: Request) {
         }
         where.userId = userId
       }
+      if (projectId) {
+        where.projectId = projectId
+      }
     } else {
       where.userId = session.user.id
-    }
-
-    if (projectId) {
-      where.projectId = projectId
+      if (projectId) {
+        where.projectId = projectId
+      }
     }
 
     if (startDate || endDate) {
@@ -78,6 +124,9 @@ export async function GET(request: Request) {
         },
         task: {
           select: { id: true, name: true }
+        },
+        user: {
+          select: { id: true, name: true, email: true }
         }
       },
       orderBy: { startTime: "desc" }

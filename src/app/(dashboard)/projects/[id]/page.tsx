@@ -92,6 +92,11 @@ interface TimeEntry {
     name: string
     color: string
   }
+  user?: {
+    id: string
+    name: string | null
+    email: string
+  }
 }
 
 export default function ProjectDetailPage({
@@ -149,7 +154,8 @@ export default function ProjectDetailPage({
 
   const fetchEntries = useCallback(async () => {
     try {
-      const response = await fetch(`/api/time-entries?projectId=${id}`)
+      // Include allMembers=true to show entries from all project members
+      const response = await fetch(`/api/time-entries?projectId=${id}&allMembers=true`)
       if (response.ok) {
         const data = await response.json()
         setEntries(data)
@@ -475,6 +481,7 @@ export default function ProjectDetailPage({
                 entries={entries}
                 onEdit={handleEditEntry}
                 onDelete={handleDeleteEntry}
+                showUser={true}
               />
             </CardContent>
           </Card>

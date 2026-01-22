@@ -37,6 +37,11 @@ interface TimeEntry {
     name: string
     color: string
   }
+  user?: {
+    id: string
+    name: string | null
+    email: string
+  }
 }
 
 interface Comment {
@@ -58,6 +63,7 @@ interface TimeEntryListProps {
   onToggleFavorite?: (projectId: string) => Promise<void>
   favoriteProjectIds?: Set<string>
   canEdit?: boolean
+  showUser?: boolean
 }
 
 export function TimeEntryList({
@@ -67,7 +73,8 @@ export function TimeEntryList({
   onDuplicate,
   onToggleFavorite,
   favoriteProjectIds = new Set(),
-  canEdit = true
+  canEdit = true,
+  showUser = false
 }: TimeEntryListProps) {
   const [editingEntry, setEditingEntry] = useState<TimeEntry | null>(null)
   const [editActivity, setEditActivity] = useState("")
@@ -275,6 +282,12 @@ export function TimeEntryList({
                       </div>
                       <div className="flex items-center gap-2 text-sm text-muted-foreground">
                         <span>{entry.project.name}</span>
+                        {showUser && entry.user && (
+                          <>
+                            <span>•</span>
+                            <span className="font-medium">{entry.user.name || entry.user.email}</span>
+                          </>
+                        )}
                         {entry.notes && (
                           <>
                             <span>•</span>
